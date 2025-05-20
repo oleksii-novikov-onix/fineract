@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoanTransactionReadService {
 
     @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     public List<LoanTransaction> fetchLoanTransactionsByType(final Long loanId, final String externalId,
             final LoanTransactionType transactionType) {
