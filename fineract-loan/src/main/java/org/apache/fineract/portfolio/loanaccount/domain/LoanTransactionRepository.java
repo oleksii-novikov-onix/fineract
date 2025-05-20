@@ -18,12 +18,14 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleDelinquencyData;
+import org.apache.fineract.portfolio.loanaccount.data.TransactionPortionsForForeclosure;
 import org.apache.fineract.portfolio.loanaccount.data.UnpaidChargeData;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -72,6 +74,57 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
     Optional<Long> findLoanIdById(@Param("id") Long id);
 
     @Query("""
+                SELECT COALESCE(SUM(lt.unrecognizedIncomePortion), 0)
+                FROM LoanTransaction lt
+                WHERE lt.loan = :loan
+                AND lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.WAIVE_INTEREST
+                AND lt.reversed = false
+                AND lt.dateOf <= :toDate
+            """)
+    BigDecimal findTotalUnrecognizedIncomeFromInterestWaiverByLoanAndDate(@Param("loan") Loan loan, @Param("toDate") LocalDate toDate);
+
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL THEN lt.interestPortion
+                 WHEN lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT THEN -lt.interestPortion
+                 ELSE 0 END), 0)
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.reversed = false
+            """)
+    BigDecimal findTotalInterestAccruedAmount(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT lt
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND (lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL
+                    OR lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT)
+            """)
+    List<LoanTransaction> findAccrualTransactions(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT lt
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INCOME_POSTING
+            """)
+    List<LoanTransaction> findIncomePostingTransactions(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT COALESCE(SUM(lt.interestPortion), 0)
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL
+                AND lt.dateOf > :fromDate
+                AND lt.dateOf <= :dueDate
+            """)
+    BigDecimal findAccrualInterestInPeriod(@Param("loan") Loan loan, @Param("fromDate") LocalDate fromDate,
+            @Param("dueDate") LocalDate dueDate);
+
+    @Query("""
             SELECT CASE WHEN COUNT(lt) > 0 THEN false ELSE true END
             FROM LoanTransaction lt
             WHERE lt.loan = :loan
@@ -97,5 +150,24 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             )
             """)
     Optional<LocalDate> findLastTransactionDateForReprocessing(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT
+                lt.typeOf AS transactionType,
+                lt.interestPortion AS interestPortion,
+                lt.feeChargesPortion AS feeChargesPortion,
+                lt.penaltyChargesPortion AS penaltyChargesPortion
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.reversed = false
+            AND lt.dateOf <= :tillDate
+            AND lt.typeOf NOT IN (
+                org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.DISBURSEMENT,
+                org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REPAYMENT_AT_DISBURSEMENT
+            )
+            ORDER BY lt.dateOf
+            """)
+    List<TransactionPortionsForForeclosure> findTransactionDataForForeclosureIncome(@Param("loan") Loan loan,
+            @Param("tillDate") LocalDate tillDate);
 
 }

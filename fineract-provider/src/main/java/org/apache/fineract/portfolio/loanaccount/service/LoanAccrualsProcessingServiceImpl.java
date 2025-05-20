@@ -65,9 +65,11 @@ import org.apache.fineract.portfolio.loanaccount.data.AccrualBalances;
 import org.apache.fineract.portfolio.loanaccount.data.AccrualChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.AccrualPeriodData;
 import org.apache.fineract.portfolio.loanaccount.data.AccrualPeriodsData;
+import org.apache.fineract.portfolio.loanaccount.data.TransactionPortionsForForeclosure;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidByRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalcualtionAdditionalDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalculationDetails;
@@ -77,6 +79,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionComparator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionToRepaymentScheduleMapping;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleGeneratorFactory;
@@ -114,6 +117,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
     private final LoanAccountingBridgeMapper loanAccountingBridgeMapper;
     private final LoanChargeService loanChargeService;
     private final LoanBalanceService loanBalanceService;
+    private final LoanChargePaidByRepository loanChargePaidByRepository;
 
     /**
      * method adds accrual for batch job "Add Periodic Accrual Transactions" and add accruals api for Loan
@@ -312,14 +316,12 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             MonetaryCurrency currency = loan.getCurrency();
             reverseTransactionsAfter(retrieveListOfAccrualTransactions(loan), foreClosureDate, false);
 
-            HashMap<String, Object> incomeDetails = new HashMap<>();
+            final Map<String, Money> incomeDetails = determineReceivableIncomeForeClosure(loan, foreClosureDate);
 
-            determineReceivableIncomeForeClosure(loan, foreClosureDate, incomeDetails);
-
-            Money interestPortion = foreCloseDetail.getInterestCharged(currency).minus((Money) incomeDetails.get(Loan.INTEREST));
-            Money feePortion = foreCloseDetail.getFeeChargesCharged(currency).minus((Money) incomeDetails.get(Loan.FEE));
-            Money penaltyPortion = foreCloseDetail.getPenaltyChargesCharged(currency).minus((Money) incomeDetails.get(Loan.PENALTIES));
-            Money total = interestPortion.plus(feePortion).plus(penaltyPortion);
+            final Money interestPortion = foreCloseDetail.getInterestCharged(currency).minus(incomeDetails.get(Loan.INTEREST));
+            final Money feePortion = foreCloseDetail.getFeeChargesCharged(currency).minus(incomeDetails.get(Loan.FEE));
+            final Money penaltyPortion = foreCloseDetail.getPenaltyChargesCharged(currency).minus(incomeDetails.get(Loan.PENALTIES));
+            final Money total = interestPortion.plus(feePortion).plus(penaltyPortion);
 
             if (total.isGreaterThanZero()) {
                 createAccrualTransactionAndUpdateChargesPaidBy(loan, foreClosureDate, newAccrualTransactions, currency, interestPortion,
@@ -344,7 +346,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         final List<LoanTransaction> existingAccruals = retrieveListOfAccrualTransactions(loan);
         final LocalDate lastDueDate = loan.getLastLoanRepaymentScheduleInstallment().getDueDate();
         reverseTransactionsAfter(existingAccruals, lastDueDate, addJournal);
-        ensureAccrualTransactionMappings(loan, existingAccruals, chargeOnDueDate);
+        ensureAccrualTransactionMappings(loan, chargeOnDueDate);
         if (DateUtils.isAfter(tillDate, lastDueDate)) {
             tillDate = lastDueDate;
         }
@@ -540,11 +542,8 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         // unrecognized amount of the transaction is not mapped to installments
         LocalDate dueDate = installment.getDueDate();
         LocalDate toDate = DateUtils.isBefore(dueDate, tillDate) ? dueDate : tillDate;
-        Predicate<LoanTransaction> transactionPredicate = t -> !t.isReversed() && t.isInterestWaiver()
-                && !DateUtils.isAfter(t.getTransactionDate(), toDate);
         Loan loan = installment.getLoan();
-        BigDecimal totalUnrecognized = loan.getLoanTransactions().stream().filter(transactionPredicate)
-                .map(LoanTransaction::getUnrecognizedIncomePortion).reduce(BigDecimal.ZERO, MathUtil::add);
+        BigDecimal totalUnrecognized = loanTransactionRepository.findTotalUnrecognizedIncomeFromInterestWaiverByLoanAndDate(loan, toDate);
         // total unrecognized amount from previous periods
         BigDecimal prevUnrecognized = accrualPeriods.getPeriods().stream()
                 .filter(p -> p.getInstallmentNumber() < installment.getInstallmentNumber())
@@ -558,9 +557,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             @NotNull AccrualPeriodsData accrualPeriods, @NotNull LocalDate tillDate) {
         Loan loan = installment.getLoan();
         if (isProgressiveAccrual(loan)) {
-            BigDecimal totalAccrued = loan.getLoanTransactions().stream().filter(ACCRUAL_PREDICATE)
-                    .map(t -> t.isAccrual() ? t.getInterestPortion() : MathUtil.negate(t.getInterestPortion()))
-                    .reduce(BigDecimal.ZERO, MathUtil::add);
+            BigDecimal totalAccrued = loanTransactionRepository.findTotalInterestAccruedAmount(loan);
             BigDecimal prevAccrued = accrualPeriods.getPeriods().stream()
                     .filter(p -> p.getInstallmentNumber() < installment.getInstallmentNumber())
                     .map(p -> MathUtil.toBigDecimal(p.getTransactionAccrued())).reduce(BigDecimal.ZERO, MathUtil::add);
@@ -569,9 +566,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             return isInPeriod(tillDate, installment, false) ? accrued : MathUtil.min(installment.getInterestAccrued(), accrued, false);
         } else {
             return isFullPeriod(tillDate, installment) ? installment.getInterestAccrued()
-                    : loan.getLoanTransactions().stream()
-                            .filter(t -> !t.isReversed() && t.isAccrual() && isInPeriod(t.getTransactionDate(), installment, false))
-                            .map(LoanTransaction::getInterestPortion).reduce(BigDecimal.ZERO, MathUtil::add);
+                    : loanTransactionRepository.findAccrualInterestInPeriod(loan, installment.getFromDate(), installment.getDueDate());
         }
     }
 
@@ -767,7 +762,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             return;
         }
         final boolean isChargeOnDueDate = isChargeOnDueDate();
-        ensureAccrualTransactionMappings(loan, accrualTransactions, isChargeOnDueDate);
+        ensureAccrualTransactionMappings(loan, isChargeOnDueDate);
         LoanRepaymentScheduleInstallment lastInstallment = loan.getLastLoanRepaymentScheduleInstallment();
         LocalDate lastDueDate = lastInstallment.getDueDate();
         if (isProgressiveAccrual(loan)) {
@@ -1065,7 +1060,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             List<LoanTransaction> updatedAccrualTransactions = retrieveListOfAccrualTransactions(loan);
             LocalDate lastAccruedDate = loan.getDisbursementDate();
             if (!updatedAccrualTransactions.isEmpty()) {
-                lastAccruedDate = updatedAccrualTransactions.get(updatedAccrualTransactions.size() - 1).getTransactionDate();
+                lastAccruedDate = updatedAccrualTransactions.getLast().getTransactionDate();
             }
             HashMap<String, Object> feeDetails = new HashMap<>();
             determineFeeDetails(loan, lastAccruedDate, closedDate, feeDetails);
@@ -1079,26 +1074,31 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         }
     }
 
-    // LoanForClosure
-
-    private void determineReceivableIncomeForeClosure(Loan loan, final LocalDate tillDate, Map<String, Object> incomeDetails) {
+    private Map<String, Money> determineReceivableIncomeForeClosure(final Loan loan, final LocalDate tillDate) {
         MonetaryCurrency currency = loan.getCurrency();
         Money receivableInterest = Money.zero(currency);
         Money receivableFee = Money.zero(currency);
         Money receivablePenalty = Money.zero(currency);
-        for (final LoanTransaction transaction : loan.getLoanTransactions()) {
-            if (transaction.isNotReversed() && !transaction.isRepaymentAtDisbursement() && !transaction.isDisbursement()
-                    && !DateUtils.isAfter(transaction.getTransactionDate(), tillDate)) {
-                if (transaction.isAccrual()) {
-                    receivableInterest = receivableInterest.plus(transaction.getInterestPortion(currency));
-                    receivableFee = receivableFee.plus(transaction.getFeeChargesPortion(currency));
-                    receivablePenalty = receivablePenalty.plus(transaction.getPenaltyChargesPortion(currency));
-                } else if (transaction.isRepaymentLikeType() || transaction.isChargePayment() || transaction.isAccrualAdjustment()) {
-                    receivableInterest = receivableInterest.minus(transaction.getInterestPortion(currency));
-                    receivableFee = receivableFee.minus(transaction.getFeeChargesPortion(currency));
-                    receivablePenalty = receivablePenalty.minus(transaction.getPenaltyChargesPortion(currency));
-                }
+
+        final List<TransactionPortionsForForeclosure> transactionPortions = loanTransactionRepository
+                .findTransactionDataForForeclosureIncome(loan, tillDate);
+
+        for (TransactionPortionsForForeclosure transactionPortion : transactionPortions) {
+            LoanTransactionType transactionType = transactionPortion.getTransactionType();
+            BigDecimal interestPortion = transactionPortion.getInterestPortion();
+            BigDecimal feePortion = transactionPortion.getFeeChargesPortion();
+            BigDecimal penaltyPortion = transactionPortion.getPenaltyChargesPortion();
+
+            if (transactionType.isAccrual()) {
+                receivableInterest = receivableInterest.plus(Money.of(currency, interestPortion));
+                receivableFee = receivableFee.plus(Money.of(currency, feePortion));
+                receivablePenalty = receivablePenalty.plus(Money.of(currency, penaltyPortion));
+            } else if (transactionType.isRepayment() || transactionType.isChargePayment() || transactionType.isAccrualAdjustment()) {
+                receivableInterest = receivableInterest.minus(Money.of(currency, interestPortion));
+                receivableFee = receivableFee.minus(Money.of(currency, feePortion));
+                receivablePenalty = receivablePenalty.minus(Money.of(currency, penaltyPortion));
             }
+
             if (receivableInterest.isLessThanZero()) {
                 receivableInterest = receivableInterest.zero();
             }
@@ -1110,9 +1110,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             }
         }
 
-        incomeDetails.put(Loan.INTEREST, receivableInterest);
-        incomeDetails.put(Loan.FEE, receivableFee);
-        incomeDetails.put(Loan.PENALTIES, receivablePenalty);
+        return Map.of(Loan.INTEREST, receivableInterest, Loan.FEE, receivableFee, Loan.PENALTIES, receivablePenalty);
     }
 
     private void createAccrualTransactionAndUpdateChargesPaidBy(Loan loan, LocalDate foreClosureDate,
@@ -1148,38 +1146,35 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeData);
     }
 
-    private void ensureAccrualTransactionMappings(final Loan loan, final List<LoanTransaction> existingAccrualTransactions,
-            final boolean chargeOnDueDate) {
-        final List<LoanTransaction> transactions = existingAccrualTransactions.stream()
-                .filter(t -> !MathUtil.isEmpty(t.getFeeChargesPortion()) || !MathUtil.isEmpty(t.getPenaltyChargesPortion())).toList();
+    private void ensureAccrualTransactionMappings(final Loan loan, final boolean chargeOnDueDate) {
+        final List<LoanChargePaidBy> entriesToProcess = loanChargePaidByRepository
+                .findAccrualTransactionMappingsWithoutInstallmentNumber(loan);
 
-        if (transactions.isEmpty()) {
+        if (entriesToProcess.isEmpty()) {
             return;
         }
 
         final int firstInstallmentNumber = fetchFirstNormalInstallmentNumber(loan.getRepaymentScheduleInstallments());
-        for (LoanTransaction transaction : transactions) {
-            for (LoanChargePaidBy paidBy : transaction.getLoanChargesPaid()) {
-                if (paidBy.getInstallmentNumber() == null) {
-                    final LoanCharge loanCharge = paidBy.getLoanCharge();
-                    final LocalDate chargeDate = (chargeOnDueDate || loanCharge.isInstalmentFee()) ? transaction.getTransactionDate()
-                            : loanCharge.getDueDate();
-                    final LoanRepaymentScheduleInstallment installment = loan.getRepaymentScheduleInstallment(
-                            i -> isInPeriod(chargeDate, i, i.getInstallmentNumber().equals(firstInstallmentNumber)));
-                    paidBy.setInstallmentNumber(installment.getInstallmentNumber());
-                }
+        for (LoanChargePaidBy paidBy : entriesToProcess) {
+            final LoanCharge loanCharge = paidBy.getLoanCharge();
+            final LocalDate chargeDate = (chargeOnDueDate || loanCharge.isInstalmentFee())
+                    ? paidBy.getLoanTransaction().getTransactionDate()
+                    : loanCharge.getDueDate();
+            final LoanRepaymentScheduleInstallment installment = loan.getRepaymentScheduleInstallment(
+                    i -> isInPeriod(chargeDate, i, i.getInstallmentNumber().equals(firstInstallmentNumber)));
+            if (installment != null) {
+                paidBy.setInstallmentNumber(installment.getInstallmentNumber());
             }
         }
     }
 
     private List<LoanTransaction> retrieveListOfAccrualTransactions(final Loan loan) {
-        return loan.getLoanTransactions().stream().filter(ACCRUAL_PREDICATE).sorted(LoanTransactionComparator.INSTANCE)
+        return loanTransactionRepository.findAccrualTransactions(loan).stream().sorted(LoanTransactionComparator.INSTANCE)
                 .collect(Collectors.toList());
     }
 
     private List<LoanTransaction> retrieveListOfIncomePostingTransactions(final Loan loan) {
-        return loan.getLoanTransactions().stream() //
-                .filter(transaction -> transaction.isNotReversed() && transaction.isIncomePosting()) //
+        return loanTransactionRepository.findIncomePostingTransactions(loan).stream() //
                 .sorted(LoanTransactionComparator.INSTANCE).collect(Collectors.toList());
     }
 

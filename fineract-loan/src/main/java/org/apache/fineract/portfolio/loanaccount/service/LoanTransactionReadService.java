@@ -32,6 +32,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoanTransactionReadService {
 
     private final EntityManager entityManager;
+    private final LoanTransactionRepository loanTransactionRepository;
 
     public List<LoanTransaction> fetchLoanTransactionsByType(final Long loanId, final String externalId,
             final LoanTransactionType transactionType) {
