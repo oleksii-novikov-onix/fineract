@@ -39,6 +39,8 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
 
     Optional<LoanTransaction> findByIdAndLoanId(Long transactionId, Long loanId);
 
+    List<LoanTransaction> findByLoan(Loan loan);
+
     @Query("""
             SELECT new org.apache.fineract.portfolio.loanaccount.data.LoanScheduleDelinquencyData(
                 lt.loan.id,

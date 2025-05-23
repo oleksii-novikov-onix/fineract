@@ -692,10 +692,11 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         LoanTransaction transaction = adjustment
                 ? accrualAdjustment(loan, loan.getOffice(), transactionDate, amount, interest, fee, penalty, externalIdFactory.create())
                 : accrueTransaction(loan, loan.getOffice(), transactionDate, amount, interest, fee, penalty, externalIdFactory.create());
-        loan.addLoanTransaction(transaction);
 
         // update repayment schedule portions
         addTransactionMappings(transaction, accrualPeriod, adjustment);
+        loanTransactionRepository.save(transaction);
+
         return transaction;
     }
 
@@ -841,7 +842,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
                     }
                     final LoanTransaction interestAccrualTransaction = LoanTransaction.accrueInterest(loan.getOffice(), loan,
                             interestApplied, loan.getDisbursementDate(), externalId);
-                    loan.addLoanTransaction(interestAccrualTransaction);
+                    loanTransactionRepository.save(interestAccrualTransaction);
                 }
             } else {
                 Set<LoanChargePaidBy> chargePaidBies = accrualTransaction.getLoanChargesPaid();
@@ -955,12 +956,12 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         if (existingIncomeTransaction == null) {
             LoanTransaction transaction = LoanTransaction.incomePosting(loan, loan.getOffice(), compoundingDetail.getEffectiveDate(),
                     compoundingDetail.getAmount(), interest, fee, penalties, externalId);
-            loan.addLoanTransaction(transaction);
+            loanTransactionRepository.save(transaction);
         } else if (existingIncomeTransaction.getAmount(loan.getCurrency()).getAmount().compareTo(compoundingDetail.getAmount()) != 0) {
             existingIncomeTransaction.reverse();
             LoanTransaction transaction = LoanTransaction.incomePosting(loan, loan.getOffice(), compoundingDetail.getEffectiveDate(),
                     compoundingDetail.getAmount(), interest, fee, penalties, externalId);
-            loan.addLoanTransaction(transaction);
+            loanTransactionRepository.save(transaction);
         }
     }
 
@@ -980,7 +981,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
                 LoanTransaction accrual = LoanTransaction.accrueTransaction(loan, loan.getOffice(), compoundingDetail.getEffectiveDate(),
                         compoundingDetail.getAmount(), interest, fee, penalties, externalId);
                 updateLoanChargesPaidBy(loan, accrual, feeDetails, null);
-                loan.addLoanTransaction(accrual);
+                loanTransactionRepository.save(accrual);
             }
         }
     }
@@ -1054,7 +1055,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
         }
         LoanTransaction finalIncomeTransaction = LoanTransaction.incomePosting(loan, loan.getOffice(), closedDate, amountToPost,
                 interestToPost, feeToPost, penaltyToPost, externalId);
-        loan.addLoanTransaction(finalIncomeTransaction);
+        loanTransactionRepository.save(finalIncomeTransaction);
 
         if (loan.isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
             List<LoanTransaction> updatedAccrualTransactions = retrieveListOfAccrualTransactions(loan);
@@ -1070,7 +1071,7 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             LoanTransaction finalAccrual = LoanTransaction.accrueTransaction(loan, loan.getOffice(), closedDate, amountToPost,
                     interestToPost, feeToPost, penaltyToPost, externalId);
             updateLoanChargesPaidBy(loan, finalAccrual, feeDetails, null);
-            loan.addLoanTransaction(finalAccrual);
+            loanTransactionRepository.save(finalAccrual);
         }
     }
 
@@ -1124,7 +1125,6 @@ public class LoanAccrualsProcessingServiceImpl implements LoanAccrualsProcessing
             fromDate = loan.getAccruedTill();
         }
         newAccrualTransactions.add(accrualTransaction);
-        loan.addLoanTransaction(accrualTransaction);
         Set<LoanChargePaidBy> accrualCharges = accrualTransaction.getLoanChargesPaid();
         for (LoanCharge loanCharge : loan.getActiveCharges()) {
             boolean isDue = loanCharge.isDueInPeriod(fromDate, foreClosureDate, DateUtils.isEqual(fromDate, loan.getDisbursementDate()));
