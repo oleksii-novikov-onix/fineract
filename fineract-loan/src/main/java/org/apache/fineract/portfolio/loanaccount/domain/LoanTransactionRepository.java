@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleDelinquencyData;
 import org.apache.fineract.portfolio.loanaccount.data.TransactionPortionsForForeclosure;
@@ -171,5 +172,16 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             """)
     List<TransactionPortionsForForeclosure> findTransactionDataForForeclosureIncome(@Param("loan") Loan loan,
             @Param("tillDate") LocalDate tillDate);
+
+    @Query("""
+            SELECT lt
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf IN :types
+                AND lt.dateOf = :transactionDate
+            """)
+    Optional<LoanTransaction> findByLoanAndByTypesAndByDate(@Param("loan") Loan loan, @Param("type") Set<LoanTransactionType> types,
+            @Param("transactionDate") LocalDate transactionDate);
 
 }
