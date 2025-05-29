@@ -29,10 +29,14 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeDataDTO;
 import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeLoanTransactionDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByDTO;
+import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionAccountingBridge;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidByRepository;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanChargeRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionBridgeRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelation;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
@@ -44,6 +48,9 @@ import org.springframework.stereotype.Component;
 public class LoanAccountingBridgeMapper {
 
     private final LoanTransactionRepository loanTransactionRepository;
+    private final LoanTransactionBridgeRepository loanTransactionBridgeRepository;
+    private final LoanChargePaidByRepository loanChargePaidByRepository;
+    private final LoanChargeRepository loanChargeRepository;
 
     public List<AccountingBridgeDataDTO> deriveAccountingBridgeDataForChargeOff(final String currencyCode,
             final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds, final boolean isAccountTransfer,
@@ -75,15 +82,8 @@ public class LoanAccountingBridgeMapper {
 
     public AccountingBridgeDataDTO deriveAccountingBridgeData(final String currencyCode, final List<Long> existingTransactionIds,
             final List<Long> existingReversedTransactionIds, final boolean isAccountTransfer, final Loan loan) {
-        List<LoanTransaction> transactions;
-        if (existingTransactionIds == null || existingTransactionIds.isEmpty()) {
-            transactions = loanTransactionRepository.findNonReversedTransactionsByLoan(loan);
-        } else if (existingReversedTransactionIds == null || existingReversedTransactionIds.isEmpty()) {
-            transactions = loanTransactionRepository.findTransactionsForAccountingBridge(loan, existingTransactionIds);
-        } else {
-            transactions = loanTransactionRepository.findTransactionsForAccountingBridge(loan, existingTransactionIds,
-                    existingReversedTransactionIds);
-        }
+        List<LoanTransactionAccountingBridge> transactions = loanTransactionBridgeRepository.findTransactionsForAccountingBridge(loan,
+                existingTransactionIds, existingReversedTransactionIds);
 
         final List<AccountingBridgeLoanTransactionDTO> newLoanTransactions = transactions.stream() //
                 .map(transaction -> mapToLoanTransactionData(transaction, currencyCode)) //
@@ -94,6 +94,55 @@ public class LoanAccountingBridgeMapper {
                 loan.isUpfrontAccrualAccountingEnabledOnLoanProduct(), loan.isPeriodicAccrualAccountingEnabledOnLoanProduct(),
                 isAccountTransfer, loan.isChargedOff(), loan.isFraud(), loan.fetchChargeOffReasonId(), loan.isClosedWrittenOff(),
                 newLoanTransactions);
+    }
+
+    private AccountingBridgeLoanTransactionDTO mapToLoanTransactionData(final LoanTransactionAccountingBridge transaction,
+            final String currencyCode) {
+        final AccountingBridgeLoanTransactionDTO transactionDTO = new AccountingBridgeLoanTransactionDTO();
+
+        transactionDTO.setId(transaction.id());
+        transactionDTO.setOfficeId(transaction.officeId());
+        transactionDTO.setType(LoanEnumerations.transactionType(transaction.typeOf()));
+        transactionDTO.setReversed(transaction.reversed());
+        transactionDTO.setDate(transaction.dateOf());
+        transactionDTO.setCurrencyCode(currencyCode);
+        transactionDTO.setAmount(transaction.amount());
+        transactionDTO.setNetDisbursalAmount(transaction.netDisbursalAmount());
+
+        if (transactionDTO.getType().isChargeback() && !transaction.hasCreditAllocationRules()) {
+            transactionDTO.setPrincipalPortion(transaction.amount());
+        } else {
+            transactionDTO.setPrincipalPortion(transaction.principalPortion());
+        }
+
+        transactionDTO.setInterestPortion(transaction.interestPortion());
+        transactionDTO.setFeeChargesPortion(transaction.feeChargesPortion());
+        transactionDTO.setPenaltyChargesPortion(transaction.penaltyChargesPortion());
+        transactionDTO.setOverPaymentPortion(transaction.overPaymentPortion());
+
+        if (transactionDTO.getType().isChargeRefund()) {
+            transactionDTO.setChargeRefundChargeType(transaction.chargeRefundChargeType());
+        }
+
+        transactionDTO.setPaymentTypeId(transaction.paymentTypeId());
+
+        List<LoanChargePaidByDTO> loanChargesPaidData = loanChargePaidByRepository.findByTransaction(transaction.id());
+        transactionDTO.setLoanChargesPaid(loanChargesPaidData);
+
+        if (transactionDTO.getType().isChargeback() && transaction.overPaymentPortion() != null
+                && transaction.overPaymentPortion().compareTo(BigDecimal.ZERO) > 0) {
+            transactionDTO
+                    .setPrincipalPaid(transaction.principalPaid() == null ? transaction.overPaymentPortion() : transaction.principalPaid());
+            transactionDTO.setFeePaid(transaction.feePaid() == null ? BigDecimal.ZERO : transaction.feePaid());
+            transactionDTO.setPenaltyPaid(transaction.penaltyPaid() == null ? BigDecimal.ZERO : transaction.penaltyPaid());
+        }
+
+        loanChargeRepository.findByChargeAdjustmentTransaction(transaction.id())
+                .ifPresent(loanCharge -> transactionDTO.setLoanChargeData(loanCharge.toData()));
+
+        transactionDTO.setLoanToLoanTransfer(false);
+
+        return transactionDTO;
     }
 
     public AccountingBridgeLoanTransactionDTO mapToLoanTransactionData(final LoanTransaction transaction, final String currencyCode) {

@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.util.List;
+import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -39,5 +40,19 @@ public interface LoanChargePaidByRepository extends JpaRepository<LoanChargePaid
                 AND lcpb.installmentNumber IS NULL
             """)
     List<LoanChargePaidBy> findChargePaidByMappingsWithoutInstallmentNumber(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT new org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByDTO(
+                lc.charge.id,
+                lc.penaltyCharge,
+                lc.id,
+                lcpb.amount,
+                lcpb.installmentNumber
+            )
+            FROM LoanChargePaidBy lcpb
+                JOIN lcpb.loanCharge lc
+            WHERE lcpb.loanTransaction.id = :transactionId
+            """)
+    List<LoanChargePaidByDTO> findByTransaction(@Param("transactionId") long transactionId);
 
 }

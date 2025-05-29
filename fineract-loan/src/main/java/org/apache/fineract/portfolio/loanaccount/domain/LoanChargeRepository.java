@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -39,4 +40,12 @@ public interface LoanChargeRepository extends JpaRepository<LoanCharge, Long>, J
             AND lc.dueDate >= :fromDate
             """)
     List<LoanCharge> findByLoanIdAndFromDueDate(@Param("loanId") Long loanId, @Param("fromDate") LocalDate fromDate);
+
+    @Query("""
+                SELECT ltr.toCharge
+                FROM LoanTransactionRelation ltr
+                WHERE ltr.fromTransaction.id = :transactionId
+                    AND ltr.relationType = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum.CHARGE_ADJUSTMENT
+            """)
+    Optional<LoanCharge> findByChargeAdjustmentTransaction(@Param("transactionId") long transactionId);
 }

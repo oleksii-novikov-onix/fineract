@@ -274,35 +274,4 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             """)
     Optional<LocalDate> findLastNonReversedTransactionDateByLoanAndTypes(@Param("loan") Loan loan,
             @Param("types") Set<LoanTransactionType> types);
-
-    @Query("""
-            SELECT lt FROM LoanTransaction lt
-            WHERE lt.loan = :loan
-                AND (
-                    (lt.reversed = true AND lt.id IN :existingTransactionIds AND lt.id NOT IN :existingReversedTransactionIds)
-                    OR (lt.id NOT IN :existingTransactionIds)
-                )
-            """)
-    List<LoanTransaction> findTransactionsForAccountingBridge(@Param("loan") Loan loan,
-            @Param("existingTransactionIds") List<Long> existingTransactionIds,
-            @Param("existingReversedTransactionIds") List<Long> existingReversedTransactionIds);
-
-    @Query("""
-            SELECT lt FROM LoanTransaction lt
-            WHERE lt.loan = :loan
-                AND (
-                    (lt.reversed = true AND lt.id IN :existingTransactionIds)
-                    OR (lt.id NOT IN :existingTransactionIds)
-                )
-            """)
-    List<LoanTransaction> findTransactionsForAccountingBridge(@Param("loan") Loan loan,
-            @Param("existingTransactionIds") List<Long> existingTransactionIds);
-
-    @Query("""
-            SELECT lt FROM LoanTransaction lt
-            WHERE lt.loan = :loan
-                AND lt.reversed = false
-            """)
-    List<LoanTransaction> findNonReversedTransactionsByLoan(@Param("loan") Loan loan);
-
 }
