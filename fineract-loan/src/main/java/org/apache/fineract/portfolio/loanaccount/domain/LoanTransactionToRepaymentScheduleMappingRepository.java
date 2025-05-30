@@ -20,10 +20,23 @@ package org.apache.fineract.portfolio.loanaccount.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface LoanTransactionToRepaymentScheduleMappingRepository extends JpaRepository<LoanTransactionToRepaymentScheduleMapping, Long>,
         JpaSpecificationExecutor<LoanTransactionToRepaymentScheduleMapping> {
 
     LoanTransactionToRepaymentScheduleMapping findByLoanTransaction(LoanTransaction loanTransaction);
+
+    @Query("""
+            SELECT new org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionPaidAmounts(
+                COALESCE(SUM(ltsm.principalPortion), 0),
+                COALESCE(SUM(ltsm.feeChargesPortion), 0),
+                COALESCE(SUM(ltsm.penaltyChargesPortion), 0)
+            )
+            FROM LoanTransactionToRepaymentScheduleMapping ltsm
+            WHERE ltsm.loanTransaction.id = :transactionId
+            """)
+    LoanTransactionPaidAmounts findTransactionPaidAmounts(@Param("transactionId") Long transactionId);
 
 }

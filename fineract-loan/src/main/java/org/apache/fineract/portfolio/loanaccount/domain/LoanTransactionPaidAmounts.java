@@ -16,14 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.data;
+package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 
-public record LoanTransactionAccountingBridge(Long id, Long officeId, LoanTransactionType typeOf, boolean reversed, LocalDate dateOf,
-        BigDecimal amount, BigDecimal netDisbursalAmount, boolean hasCreditAllocationRules, BigDecimal principalPortion,
-        BigDecimal interestPortion, BigDecimal feeChargesPortion, BigDecimal penaltyChargesPortion, BigDecimal overPaymentPortion,
-        String chargeRefundChargeType, Long paymentTypeId) {
+public record LoanTransactionPaidAmounts(BigDecimal principalPaid, BigDecimal feePaid, BigDecimal penaltyPaid) {
 }

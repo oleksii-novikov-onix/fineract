@@ -28,7 +28,6 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
-import java.math.BigDecimal;
 import java.util.List;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionAccountingBridge;
@@ -52,8 +51,6 @@ public class LoanTransactionBridgeRepository {
         Join<LoanTransaction, Office> officeJoin = lt.join("office", JoinType.INNER);
         Join<LoanTransaction, PaymentDetail> pdJoin = lt.join("paymentDetail", JoinType.LEFT);
         Join<PaymentDetail, PaymentType> ptJoin = pdJoin.join("paymentType", JoinType.LEFT);
-        Join<LoanTransaction, LoanTransactionToRepaymentScheduleMapping> ltrsmJoin = lt.join("loanTransactionToRepaymentScheduleMappings",
-                JoinType.LEFT);
 
         Subquery<Long> subquery = query.subquery(Long.class);
         Root<LoanCreditAllocationRule> lcr = subquery.from(LoanCreditAllocationRule.class);
@@ -61,15 +58,10 @@ public class LoanTransactionBridgeRepository {
 
         Expression<Boolean> hasCreditAllocationRules = cb.exists(subquery);
 
-        Expression<BigDecimal> principalPaidSum = cb.coalesce(cb.sum(ltrsmJoin.get("principalPortion")), cb.literal(BigDecimal.ZERO));
-        Expression<BigDecimal> feePaidSum = cb.coalesce(cb.sum(ltrsmJoin.get("feeChargesPortion")), cb.literal(BigDecimal.ZERO));
-        Expression<BigDecimal> penaltyPaidSum = cb.coalesce(cb.sum(ltrsmJoin.get("penaltyChargesPortion")), cb.literal(BigDecimal.ZERO));
-
         query.select(cb.construct(LoanTransactionAccountingBridge.class, lt.get("id"), officeJoin.get("id"), lt.get("typeOf"),
                 lt.get("reversed"), lt.get("dateOf"), lt.get("amount"), loanJoin.get("netDisbursalAmount"), hasCreditAllocationRules,
                 lt.get("principalPortion"), lt.get("interestPortion"), lt.get("feeChargesPortion"), lt.get("penaltyChargesPortion"),
-                lt.get("overPaymentPortion"), lt.get("chargeRefundChargeType"), ptJoin.get("id"), principalPaidSum, feePaidSum,
-                penaltyPaidSum));
+                lt.get("overPaymentPortion"), lt.get("chargeRefundChargeType"), ptJoin.get("id")));
 
         Predicate loanPredicate = cb.equal(lt.get("loan"), loan);
         Predicate transactionPredicate;
@@ -80,15 +72,11 @@ public class LoanTransactionBridgeRepository {
             transactionPredicate = cb.or(cb.and(cb.equal(lt.get("reversed"), true), lt.get("id").in(existingTransactionIds)),
                     cb.not(lt.get("id").in(existingTransactionIds)));
         } else {
-            transactionPredicate = cb.or(
-                    cb.and(cb.equal(lt.get("reversed"), true), lt.get("id").in(existingTransactionIds),
-                            cb.not(lt.get("id").in(existingReversedTransactionIds))),
-                    cb.and(cb.equal(lt.get("reversed"), false), cb.not(lt.get("id").in(existingTransactionIds))));
+            transactionPredicate = cb.or(cb.and(cb.equal(lt.get("reversed"), true), lt.get("id").in(existingTransactionIds),
+                    cb.not(lt.get("id").in(existingReversedTransactionIds))), cb.not(lt.get("id").in(existingTransactionIds)));
         }
 
         query.where(loanPredicate, transactionPredicate);
-
-        query.groupBy(lt.get("id"));
 
         return entityManager.createQuery(query).getResultList();
     }

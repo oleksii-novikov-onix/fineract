@@ -37,9 +37,10 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidByReposito
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargeRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionBridgeRepository;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionPaidAmounts;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelation;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionToRepaymentScheduleMappingRepository;
 import org.apache.fineract.portfolio.loanproduct.service.LoanEnumerations;
 import org.springframework.stereotype.Component;
 
@@ -47,10 +48,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class LoanAccountingBridgeMapper {
 
-    private final LoanTransactionRepository loanTransactionRepository;
     private final LoanTransactionBridgeRepository loanTransactionBridgeRepository;
     private final LoanChargePaidByRepository loanChargePaidByRepository;
     private final LoanChargeRepository loanChargeRepository;
+    private final LoanTransactionToRepaymentScheduleMappingRepository loanTransactionToRepaymentScheduleMappingRepository;
 
     public List<AccountingBridgeDataDTO> deriveAccountingBridgeDataForChargeOff(final String currencyCode,
             final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds, final boolean isAccountTransfer,
@@ -131,10 +132,12 @@ public class LoanAccountingBridgeMapper {
 
         if (transactionDTO.getType().isChargeback() && transaction.overPaymentPortion() != null
                 && transaction.overPaymentPortion().compareTo(BigDecimal.ZERO) > 0) {
-            transactionDTO
-                    .setPrincipalPaid(transaction.principalPaid() == null ? transaction.overPaymentPortion() : transaction.principalPaid());
-            transactionDTO.setFeePaid(transaction.feePaid() == null ? BigDecimal.ZERO : transaction.feePaid());
-            transactionDTO.setPenaltyPaid(transaction.penaltyPaid() == null ? BigDecimal.ZERO : transaction.penaltyPaid());
+            LoanTransactionPaidAmounts loanTransactionPaid = loanTransactionToRepaymentScheduleMappingRepository
+                    .findTransactionPaidAmounts(transaction.id());
+            transactionDTO.setPrincipalPaid(
+                    loanTransactionPaid.principalPaid() == null ? transaction.overPaymentPortion() : loanTransactionPaid.principalPaid());
+            transactionDTO.setFeePaid(loanTransactionPaid.feePaid() == null ? BigDecimal.ZERO : loanTransactionPaid.feePaid());
+            transactionDTO.setPenaltyPaid(loanTransactionPaid.penaltyPaid() == null ? BigDecimal.ZERO : loanTransactionPaid.penaltyPaid());
         }
 
         loanChargeRepository.findByChargeAdjustmentTransaction(transaction.id())
