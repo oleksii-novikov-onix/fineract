@@ -224,6 +224,15 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             FROM LoanTransaction lt
             WHERE lt.loan = :loan
                 AND lt.reversed = false
+                AND lt.typeOf = :type
+            """)
+    List<LoanTransaction> findNonReversedByLoanAndType(@Param("loan") Loan loan, @Param("type") LoanTransactionType type);
+
+    @Query("""
+            SELECT lt
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
                 AND lt.dateOf >= :date
                 AND lt.typeOf IN :types
             ORDER BY lt.dateOf
@@ -304,5 +313,16 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
             """)
     List<LoanTransaction> findNonReversedTransactionsByLoan(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT lt FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = :type
+                AND lt.dateOf IN :transactionDates
+            ORDER BY lt.id
+            """)
+    List<LoanTransaction> findNonReversedTransactionsLoanAndTypeAndDates(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
+            @Param("transactionDates") Set<LocalDate> transactionDates);
 
 }
