@@ -25,6 +25,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.persistence.FlushModeHandler;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
@@ -34,6 +35,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanproduct.domain.CreditAllocationTransactionType;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +45,7 @@ public class LoanBalanceService {
 
     private final CapitalizedIncomeBalanceService capitalizedIncomeBalanceService;
     private final FlushModeHandler flushModeHandler;
+    private final LoanTransactionRepository loanTransactionRepository;
 
     public Money calculateTotalOverpayment(final Loan loan) {
         Money totalPaidInRepayments = loan.getTotalPaidInRepayments();
@@ -107,7 +110,7 @@ public class LoanBalanceService {
             loan.setTotalOverpaid(overpaidBy.getAmountDefaultedToNullIfZero());
         }
 
-        final Money recoveredAmount = loan.calculateTotalRecoveredPayments();
+        final Money recoveredAmount = calculateTotalRecoveredPayments(loan);
         loan.setTotalRecovered(recoveredAmount.getAmountDefaultedToNullIfZero());
 
         final Money principal = loan.getLoanRepaymentScheduleDetail().getPrincipal();
@@ -115,7 +118,60 @@ public class LoanBalanceService {
         final Money capitalizedIncomeAdjustment = capitalizedIncomeBalanceService.calculateCapitalizedIncomeAdjustment(loan);
         loan.getSummary().updateSummary(loan.getCurrency(), principal, loan.getRepaymentScheduleInstallments(), loan.getLoanCharges(),
                 capitalizedIncome, capitalizedIncomeAdjustment);
-        loan.updateLoanOutstandingBalances();
+        updateLoanOutstandingBalances(loan);
+    }
+
+    private Money calculateTotalRecoveredPayments(Loan loan) {
+        // in case logic for reversing recovered payment is implemented handle subtraction from totalRecoveredPayments
+        Money cumulativePaid = Money.zero(loan.getCurrency());
+
+        for (final LoanTransaction recoveredPayment : loan.getLoanTransactions()) {
+            if (recoveredPayment.isRecoveryRepayment()) {
+                cumulativePaid = cumulativePaid.plus(recoveredPayment.getAmount(loan.getCurrency()));
+            }
+        }
+        return cumulativePaid;
+    }
+
+    public void updateLoanOutstandingBalances(Loan loan) {
+        Money outstanding = Money.zero(loan.getCurrency());
+        final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedMonetaryTransactionsByLoan(loan);
+        for (LoanTransaction loanTransaction : loanTransactions) {
+            if (loanTransaction.isDisbursement() || loanTransaction.isIncomePosting() || loanTransaction.isCapitalizedIncome()) {
+                outstanding = outstanding.plus(loanTransaction.getAmount(loan.getCurrency()))
+                        .minus(loanTransaction.getOverPaymentPortion(loan.getCurrency()));
+                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
+            } else if (loanTransaction.isChargeback() || loanTransaction.isCreditBalanceRefund()) {
+                Money transactionOutstanding = loanTransaction.getPrincipalPortion(loan.getCurrency());
+                if (loanTransaction.isOverPaid()) {
+                    // in case of advanced payment strategy and creditAllocations the full amount is recognized first
+                    if (loan.getCreditAllocationRules() != null && !loan.getCreditAllocationRules().isEmpty()) {
+                        Money payedPrincipal = loanTransaction.getLoanTransactionToRepaymentScheduleMappings().stream() //
+                                .map(mapping -> mapping.getPrincipalPortion(loan.getCurrency())) //
+                                .reduce(Money.zero(loan.getCurrency()), Money::plus);
+                        transactionOutstanding = loanTransaction.getPrincipalPortion(loan.getCurrency()).minus(payedPrincipal);
+                    } else {
+                        // in case legacy payment strategy
+                        transactionOutstanding = loanTransaction.getAmount(loan.getCurrency())
+                                .minus(loanTransaction.getOverPaymentPortion(loan.getCurrency()));
+                    }
+                    if (transactionOutstanding.isLessThanZero()) {
+                        transactionOutstanding = Money.zero(loan.getCurrency());
+                    }
+                }
+                outstanding = outstanding.plus(transactionOutstanding);
+                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
+            } else if (!loanTransaction.isAccrualActivity()) {
+                if (loan.getLoanInterestRecalculationDetails() != null
+                        && loan.getLoanInterestRecalculationDetails().isCompoundingToBePostedAsTransaction()
+                        && !loanTransaction.isRepaymentAtDisbursement()) {
+                    outstanding = outstanding.minus(loanTransaction.getAmount(loan.getCurrency()));
+                } else {
+                    outstanding = outstanding.minus(loanTransaction.getPrincipalPortion(loan.getCurrency()));
+                }
+                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
+            }
+        }
     }
 
     public void updateLoanToLastDisbursalState(final Loan loan, final LoanDisbursementDetails disbursementDetail) {

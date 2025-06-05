@@ -906,15 +906,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return Money.of(currency, this.outstandingLoanBalance);
     }
 
-    public boolean isPaymentTransaction() {
-        return this.isNotReversed() && !(this.isDisbursement() || this.isRepaymentAtDisbursement() || this.isNonMonetaryTransaction()
-                || this.isIncomePosting());
-    }
-
-    public boolean hasLoanTransactionRelations() {
-        return !loanTransactionRelations.isEmpty();
-    }
-
     public List<LoanTransactionRelation> getLoanTransactionRelations(Predicate<LoanTransactionRelation> predicate) {
         return loanTransactionRelations.stream().filter(predicate).toList();
     }
@@ -963,6 +954,11 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public void updateTransactionDate(final LocalDate transactionDate) {
         this.dateOf = transactionDate;
+    }
+
+    public boolean hasDerivedComponentsCalculated() {
+        return this.principalPortion != null || this.interestPortion != null || this.feeChargesPortion != null
+                || this.penaltyChargesPortion != null || this.overPaymentPortion != null;
     }
 
 }

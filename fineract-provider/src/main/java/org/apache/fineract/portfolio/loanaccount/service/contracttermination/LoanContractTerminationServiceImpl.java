@@ -102,7 +102,7 @@ public class LoanContractTerminationServiceImpl {
         changes.put(LoanApiConstants.subStatusAttributeName, loan.getLoanSubStatus().getCode());
 
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
-            final List<LoanTransaction> loanTransactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
+            final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
             loanTransactions.add(contractTermination);
             reprocessLoanTransactionsService.reprocessParticularTransactions(loan, loanTransactions);
             loan.addLoanTransaction(contractTermination);

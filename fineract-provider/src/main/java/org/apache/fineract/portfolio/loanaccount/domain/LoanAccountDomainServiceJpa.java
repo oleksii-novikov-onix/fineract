@@ -464,7 +464,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         chargesPayment.updateComponents(zero, zero, charge.getAmount(loan.getCurrency()), zero);
         chargesPayment.updateLoan(loan);
         loan.addLoanTransaction(chargesPayment);
-        loan.updateLoanOutstandingBalances();
+        loanBalanceService.updateLoanOutstandingBalances(loan);
         charge.markAsFullyPaid();
     }
 

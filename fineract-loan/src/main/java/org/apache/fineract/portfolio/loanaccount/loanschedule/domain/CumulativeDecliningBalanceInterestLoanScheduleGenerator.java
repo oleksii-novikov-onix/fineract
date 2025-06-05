@@ -28,7 +28,7 @@ import java.util.TreeMap;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
-import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.springframework.stereotype.Component;
 
@@ -63,8 +63,8 @@ public class CumulativeDecliningBalanceInterestLoanScheduleGenerator extends Abs
 
     public CumulativeDecliningBalanceInterestLoanScheduleGenerator(final ScheduledDateGenerator scheduledDateGenerator,
             final PaymentPeriodsInOneYearCalculator paymentPeriodsInOneYearCalculator,
-            final LoanTransactionService loanTransactionService) {
-        super(loanTransactionService);
+            final LoanTransactionRepository loanTransactionRepository) {
+        super(loanTransactionRepository);
         this.scheduledDateGenerator = scheduledDateGenerator;
         this.paymentPeriodsInOneYearCalculator = paymentPeriodsInOneYearCalculator;
     }

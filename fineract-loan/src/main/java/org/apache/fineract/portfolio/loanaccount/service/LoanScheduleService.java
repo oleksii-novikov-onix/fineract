@@ -94,7 +94,8 @@ public class LoanScheduleService {
     }
 
     public void regenerateRepaymentScheduleWithInterestRecalculation(final Loan loan, final ScheduleGeneratorDTO generatorDTO) {
-        final LocalDate lastTransactionDate = loan.getLastUserTransactionDate();
+        final LocalDate lastTransactionDate = loanTransactionRepository.findLastUserTransactionAfterDate(loan, loan.getDisbursementDate())
+                .orElse(loan.getDisbursementDate());
         final LoanScheduleDTO loanScheduleDTO = loanTransactionProcessingService.getRecalculatedSchedule(generatorDTO, loan);
         if (loanScheduleDTO == null) {
             return;

@@ -59,7 +59,6 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.infrastructure.security.service.RandomPasswordGenerator;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
@@ -850,17 +849,6 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.postDatedChecks = new ArrayList<>();
     }
 
-    public List<LoanTransaction> retrieveListOfTransactionsExcludeAccruals() {
-        final List<LoanTransaction> repaymentsOrWaivers = new ArrayList<>();
-        for (final LoanTransaction transaction : this.loanTransactions) {
-            if (transaction.isNotReversed() && !transaction.isNonMonetaryTransaction()) {
-                repaymentsOrWaivers.add(transaction);
-            }
-        }
-        repaymentsOrWaivers.sort(LoanTransactionComparator.INSTANCE);
-        return repaymentsOrWaivers;
-    }
-
     public List<LoanTransaction> retrieveListOfTransactionsByType(final LoanTransactionType transactionType) {
         return this.loanTransactions.stream()
                 .filter(transaction -> transaction.isNotReversed() && transaction.getTypeOf().equals(transactionType))
@@ -878,11 +866,6 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
                 .filter(transaction -> !transaction.isReversed() && transaction.isWriteOff()) //
                 .findFirst() //
                 .orElse(null);
-    }
-
-    public Money calculateTotalRecoveredPayments() {
-        // in case logic for reversing recovered payment is implemented handle subtraction from totalRecoveredPayments
-        return getTotalRecoveredPayments();
     }
 
     public MonetaryCurrency loanCurrency() {
@@ -1030,17 +1013,6 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             }
         }
 
-        return cumulativePaid;
-    }
-
-    public Money getTotalRecoveredPayments() {
-        Money cumulativePaid = Money.zero(getCurrency());
-
-        for (final LoanTransaction recoveredPayment : this.loanTransactions) {
-            if (recoveredPayment.isRecoveryRepayment()) {
-                cumulativePaid = cumulativePaid.plus(recoveredPayment.getAmount(getCurrency()));
-            }
-        }
         return cumulativePaid;
     }
 
@@ -1236,7 +1208,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
                 .filter(date -> DateUtils.isBefore(getDisbursementDate(), date)).max(LocalDate::compareTo).orElse(getDisbursementDate());
     }
 
-    private boolean isUserTransaction(LoanTransaction transaction) {
+    public boolean isUserTransaction(LoanTransaction transaction) {
         return !(transaction.isReversed() || transaction.isAccrualRelated() || transaction.isIncomePosting());
     }
 
@@ -1389,47 +1361,6 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             recalculatedOn = this.interestRecalculatedOn;
         }
         return recalculatedOn;
-    }
-
-    public void updateLoanOutstandingBalances() {
-        Money outstanding = Money.zero(getCurrency());
-        List<LoanTransaction> loanTransactions = retrieveListOfTransactionsExcludeAccruals();
-        for (LoanTransaction loanTransaction : loanTransactions) {
-            if (loanTransaction.isDisbursement() || loanTransaction.isIncomePosting() || loanTransaction.isCapitalizedIncome()) {
-                outstanding = outstanding.plus(loanTransaction.getAmount(getCurrency()))
-                        .minus(loanTransaction.getOverPaymentPortion(getCurrency()));
-                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
-            } else if (loanTransaction.isChargeback() || loanTransaction.isCreditBalanceRefund()) {
-                Money transactionOutstanding = loanTransaction.getPrincipalPortion(getCurrency());
-                if (loanTransaction.isOverPaid()) {
-                    // in case of advanced payment strategy and creditAllocations the full amount is recognized first
-                    if (this.getCreditAllocationRules() != null && !this.getCreditAllocationRules().isEmpty()) {
-                        Money payedPrincipal = loanTransaction.getLoanTransactionToRepaymentScheduleMappings().stream() //
-                                .map(mapping -> mapping.getPrincipalPortion(getCurrency())) //
-                                .reduce(Money.zero(getCurrency()), Money::plus);
-                        transactionOutstanding = loanTransaction.getPrincipalPortion(getCurrency()).minus(payedPrincipal);
-                    } else {
-                        // in case legacy payment strategy
-                        transactionOutstanding = loanTransaction.getAmount(getCurrency())
-                                .minus(loanTransaction.getOverPaymentPortion(getCurrency()));
-                    }
-                    if (transactionOutstanding.isLessThanZero()) {
-                        transactionOutstanding = Money.zero(getCurrency());
-                    }
-                }
-                outstanding = outstanding.plus(transactionOutstanding);
-                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
-            } else if (!loanTransaction.isAccrualActivity()) {
-                if (this.loanInterestRecalculationDetails != null
-                        && this.loanInterestRecalculationDetails.isCompoundingToBePostedAsTransaction()
-                        && !loanTransaction.isRepaymentAtDisbursement()) {
-                    outstanding = outstanding.minus(loanTransaction.getAmount(getCurrency()));
-                } else {
-                    outstanding = outstanding.minus(loanTransaction.getPrincipalPortion(getCurrency()));
-                }
-                loanTransaction.updateOutstandingLoanBalance(MathUtil.negativeToZero(outstanding.getAmount()));
-            }
-        }
     }
 
     public String transactionProcessingStrategy() {

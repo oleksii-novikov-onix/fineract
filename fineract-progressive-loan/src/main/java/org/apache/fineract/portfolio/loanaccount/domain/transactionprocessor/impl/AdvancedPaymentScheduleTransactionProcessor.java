@@ -84,6 +84,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionComparator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelation;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionToRepaymentScheduleMapping;
 import org.apache.fineract.portfolio.loanaccount.domain.reaging.LoanReAgeParameter;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.AbstractLoanRepaymentScheduleTransactionProcessor;
@@ -93,7 +94,6 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.InterestRefundService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
-import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
 import org.apache.fineract.portfolio.loanaccount.service.schedule.LoanScheduleComponent;
 import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.PeriodDueDetails;
@@ -121,17 +121,17 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
     private final LoanRepositoryWrapper loanRepositoryWrapper;
     private final InterestRefundService interestRefundService;
     private final LoanScheduleComponent loanSchedule;
-    private final LoanTransactionService loanTransactionService;
+    private final LoanTransactionRepository loanTransactionRepository;
 
     public AdvancedPaymentScheduleTransactionProcessor(final EMICalculator emiCalculator, final LoanRepositoryWrapper loanRepositoryWrapper,
             final InterestRefundService interestRefundService, final ExternalIdFactory externalIdFactory,
-            final LoanScheduleComponent loanSchedule, final LoanTransactionService loanTransactionRepository,
+            final LoanScheduleComponent loanSchedule, final LoanTransactionRepository loanTransactionRepository,
             final LoanChargeValidator loanChargeValidator, final LoanBalanceService loanBalanceService) {
         super(externalIdFactory, loanChargeValidator, loanBalanceService);
         this.emiCalculator = emiCalculator;
         this.loanRepositoryWrapper = loanRepositoryWrapper;
         this.interestRefundService = interestRefundService;
-        this.loanTransactionService = loanTransactionRepository;
+        this.loanTransactionRepository = loanTransactionRepository;
         this.loanSchedule = loanSchedule;
     }
 
@@ -276,7 +276,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public ProgressiveLoanInterestScheduleModel calculateInterestScheduleModel(@NotNull Long loanId, LocalDate targetDate) {
         Loan loan = loanRepositoryWrapper.findOneWithNotFoundDetection(loanId);
-        final List<LoanTransaction> transactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
+        final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
         MonetaryCurrency currency = loan.getLoanRepaymentScheduleDetail().getCurrency();
         List<LoanRepaymentScheduleInstallment> installments = loan.getRepaymentScheduleInstallments();
         Set<LoanCharge> charges = loan.getActiveCharges();

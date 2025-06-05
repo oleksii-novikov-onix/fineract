@@ -22,8 +22,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
@@ -37,7 +35,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionComparator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.TransactionCtx;
@@ -58,21 +55,11 @@ public class ReprocessLoanTransactionsServiceImpl implements ReprocessLoanTransa
 
     @Override
     public void reprocessTransactions(final Loan loan) {
-        final List<LoanTransaction> allNonContraTransactionsPostDisbursement = retrieveListOfTransactionsForReprocessing(loan);
+        final List<LoanTransaction> allNonContraTransactionsPostDisbursement = loanTransactionRepository
+                .findNonReversedTransactionsForReprocessingByLoan(loan);
         final ChangedTransactionDetail changedTransactionDetail = reprocessTransactionsAndFetchChangedTransactions(loan,
                 allNonContraTransactionsPostDisbursement);
         handleChangedDetail(changedTransactionDetail);
-    }
-
-    private List<LoanTransaction> retrieveListOfTransactionsForReprocessing(final Loan loan) {
-        return loan.getLoanTransactions().stream().filter(loanTransactionForReprocessingPredicate())
-                .sorted(LoanTransactionComparator.INSTANCE).collect(Collectors.toList());
-    }
-
-    private Predicate<LoanTransaction> loanTransactionForReprocessingPredicate() {
-        return transaction -> transaction.isNotReversed()
-                && (transaction.isChargeOff() || transaction.isReAge() || transaction.isAccrualActivity() || transaction.isReAmortize()
-                        || !transaction.isNonMonetaryTransaction() || transaction.isContractTermination());
     }
 
     @Override
@@ -83,7 +70,7 @@ public class ReprocessLoanTransactionsServiceImpl implements ReprocessLoanTransa
 
     @Override
     public void reprocessTransactionsWithPostTransactionChecks(final Loan loan, final LocalDate transactionDate) {
-        final List<LoanTransaction> transactions = retrieveListOfTransactionsForReprocessing(loan);
+        final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
         final ChangedTransactionDetail changedTransactionDetail = reprocessTransactionsAndFetchChangedTransactions(loan, transactions);
         handleChangedDetail(changedTransactionDetail);
     }

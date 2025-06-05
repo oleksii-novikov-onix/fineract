@@ -594,8 +594,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         if (loan.getLoanProduct().isMultiDisburseLoan() || loan.isProgressiveSchedule()) {
-            final List<LoanTransaction> allNonContraTransactionsPostDisbursement = loanTransactionService
-                    .retrieveListOfTransactionsForReprocessing(loan);
+            final List<LoanTransaction> allNonContraTransactionsPostDisbursement = loanTransactionRepository
+                    .findNonReversedTransactionsForReprocessingByLoan(loan);
             if (!allNonContraTransactionsPostDisbursement.isEmpty()) {
                 reprocessLoanTransactionsService.reprocessTransactions(loan);
             }
@@ -2821,7 +2821,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 final ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, null, null);
                 loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
             }
-            final List<LoanTransaction> loanTransactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
+            final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
             loanTransactions.add(chargeOffTransaction);
             reprocessLoanTransactionsService.reprocessParticularTransactions(loan, loanTransactions);
             loan.addLoanTransaction(chargeOffTransaction);
@@ -3014,7 +3014,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         loan.addLoanTransaction(chargebackTransaction);
         if (loan.isInterestBearing() && loan.isInterestRecalculationEnabled()) {
-            final List<LoanTransaction> transactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
+            final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
             loanTransactionProcessingService.reprocessLoanTransactions(loan.getTransactionProcessingStrategyCode(),
                     loan.getDisbursementDate(), transactions, loan.getCurrency(), loan.getRepaymentScheduleInstallments(),
                     loan.getActiveCharges());
@@ -3367,7 +3367,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         existingTransactionIds.addAll(loanTransactionRepository.findTransactionIdsByLoan(loan));
         existingReversedTransactionIds.addAll(loanTransactionRepository.findReversedTransactionIdsByLoan(loan));
 
-        loanTransactions = loan.retrieveListOfTransactionsExcludeAccruals();
+        loanTransactions = loanTransactionRepository.findNonReversedMonetaryTransactionsByLoan(loan);
         Collections.reverse(loanTransactions);
         for (final LoanTransaction previousTransaction : loanTransactions) {
             if (DateUtils.isBefore(lastTransactionDate, previousTransaction.getTransactionDate())

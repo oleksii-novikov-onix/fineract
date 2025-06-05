@@ -55,6 +55,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalcualtionAdditionalDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleDTO;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleModelDownPaymentPeriod;
@@ -62,13 +63,12 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleP
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.MultiDisbursementEmiAmountException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.MultiDisbursementOutstandingAmoutException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.ScheduleDateException;
-import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
 import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
 
 @RequiredArgsConstructor
 public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanScheduleGenerator {
 
-    private final LoanTransactionService loanTransactionService;
+    private final LoanTransactionRepository loanTransactionRepository;
 
     @Override
     public LoanScheduleModel generate(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
@@ -2193,12 +2193,10 @@ public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanSch
             final LocalDate scheduleTillDate) {
         // Loan transactions to process and find the variation on payments
         Collection<RecalculationDetail> recalculationDetails = new ArrayList<>();
-        List<LoanTransaction> transactions = loan.getLoanTransactions();
-        for (LoanTransaction loanTransaction : transactions) {
-            if (loanTransaction.isPaymentTransaction()) {
-                recalculationDetails.add(new RecalculationDetail(loanTransaction.getTransactionDate(),
-                        LoanTransaction.copyTransactionProperties(loanTransaction)));
-            }
+        List<LoanTransaction> paymentTransactions = loanTransactionRepository.findNonReversedPaymentTransactionsByLoan(loan);
+        for (LoanTransaction loanTransaction : paymentTransactions) {
+            recalculationDetails.add(new RecalculationDetail(loanTransaction.getTransactionDate(),
+                    LoanTransaction.copyTransactionProperties(loanTransaction)));
         }
         final boolean applyInterestRecalculation = loanApplicationTerms.isInterestBearingAndInterestRecalculationEnabled();
 
@@ -2802,7 +2800,7 @@ public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanSch
 
         LoanScheduleDTO loanScheduleDTO = rescheduleNextInstallments(mc, loanApplicationTerms, loan, holidayDetailDTO,
                 loanRepaymentScheduleTransactionProcessor, onDate, calculateTill);
-        final List<LoanTransaction> loanTransactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
+        final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
 
         loanRepaymentScheduleTransactionProcessor.reprocessLoanTransactions(loanApplicationTerms.getExpectedDisbursementDate(),
                 loanTransactions, currency, loanScheduleDTO.getInstallments(), loan.getActiveCharges());
