@@ -29,6 +29,7 @@ import org.apache.fineract.portfolio.loanaccount.data.CumulativeIncomeFromIncome
 import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleDelinquencyData;
 import org.apache.fineract.portfolio.loanaccount.data.TransactionPortionsForForeclosure;
 import org.apache.fineract.portfolio.loanaccount.data.UnpaidChargeData;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -336,5 +337,15 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             """)
     List<LoanTransaction> findNonReversedTransactionsLoanAndTypeAndDates(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
             @Param("transactionDates") Set<LocalDate> transactionDates);
+
+    @Query("""
+            SELECT lt FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = :type
+            ORDER BY lt.dateOf DESC
+            """)
+    List<LoanTransaction> findLatestNonReversedByLoanAndType(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
+            Pageable pageable);
 
 }

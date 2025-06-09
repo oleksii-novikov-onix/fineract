@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelation;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -175,26 +177,30 @@ public class LoanAccrualActivityProcessingServiceImpl implements LoanAccrualActi
         }
         // grab the latest AccrualActivityTransaction
         // it does not matter if it is on an installment due date or not because it was posted due to loan close
-        LoanTransaction lastAccrualActivityMarkedToReverse = loan.getLoanTransactions().stream()
-                .filter(loanTransaction -> loanTransaction.isNotReversed() && loanTransaction.isAccrualActivity())
-                .sorted(Comparator.comparing(LoanTransaction::getDateOf)).reduce((first, second) -> second).orElse(null);
-        final LocalDate lastAccrualActivityTransactionDate = lastAccrualActivityMarkedToReverse == null ? null
-                : lastAccrualActivityMarkedToReverse.getDateOf();
-        LocalDate today = DateUtils.getBusinessLocalDate();
-        final List<LoanRepaymentScheduleInstallment> installmentsBetweenBusinessDateAndLastAccrualActivityTransactionDate = loan
-                .getRepaymentScheduleInstallments().stream()
-                .filter(installment -> installment.getDueDate().isBefore(today)
-                        && (DateUtils.isAfter(installment.getDueDate(), lastAccrualActivityTransactionDate)
-                                // if close event happened on installment due date
-                                // we should reverse replay it to calculate installment related accrual parts only
-                                || installment.getDueDate().isEqual(lastAccrualActivityTransactionDate)))
-                .sorted(Comparator.comparing(LoanRepaymentScheduleInstallment::getDueDate)).toList();
-        for (LoanRepaymentScheduleInstallment installment : installmentsBetweenBusinessDateAndLastAccrualActivityTransactionDate) {
-            makeOrReplayActivity(loan, installment, lastAccrualActivityMarkedToReverse);
-            lastAccrualActivityMarkedToReverse = null;
-        }
-        if (lastAccrualActivityMarkedToReverse != null) {
-            reverseAccrualActivityTransaction(lastAccrualActivityMarkedToReverse);
+        final Optional<LoanTransaction> lastAccrualActivityMarkedToReverse = loanTransactionRepository
+                .findLatestNonReversedByLoanAndType(loan, LoanTransactionType.ACCRUAL_ACTIVITY, PageRequest.of(0, 1)) //
+                .stream().findFirst();
+
+        final Optional<LocalDate> lastAccrualActivityTransactionDate = lastAccrualActivityMarkedToReverse.map(LoanTransaction::getDateOf);
+        final LocalDate today = DateUtils.getBusinessLocalDate();
+
+        final List<LoanRepaymentScheduleInstallment> installments = loan.getRepaymentScheduleInstallments().stream().filter(installment -> {
+            boolean isDueBefore = installment.getDueDate().isBefore(today);
+            boolean isAfterOrEqualToLastAccrualDate = lastAccrualActivityTransactionDate
+                    .map(date -> DateUtils.isAfter(installment.getDueDate(), date)
+                            // if close event happened on installment due date
+                            // we should reverse replay it to calculate installment related accrual parts only
+                            || installment.getDueDate().isEqual(date))
+                    .orElse(true);
+            return isDueBefore && isAfterOrEqualToLastAccrualDate;
+        }).sorted(Comparator.comparing(LoanRepaymentScheduleInstallment::getDueDate)).toList();
+
+        installments.forEach(installment -> {
+            makeOrReplayActivity(loan, installment, lastAccrualActivityMarkedToReverse.orElse(null));
+        });
+
+        if (installments.isEmpty()) {
+            lastAccrualActivityMarkedToReverse.ifPresent(this::reverseAccrualActivityTransaction);
         }
     }
 
