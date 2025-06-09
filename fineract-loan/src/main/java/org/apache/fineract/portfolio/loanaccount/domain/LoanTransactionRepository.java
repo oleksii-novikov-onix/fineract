@@ -189,6 +189,18 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             @Param("types") Set<LoanTransactionType> types, @Param("transactionDate") LocalDate transactionDate);
 
     @Query("""
+            SELECT lt
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = :type
+                AND lt.dateOf > :transactionDate
+            ORDER BY lt.dateOf
+            """)
+    List<LoanTransaction> findNonReversedByLoanAndTypeAndAfterDate(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
+            @Param("transactionDate") LocalDate transactionDate);
+
+    @Query("""
             SELECT CASE WHEN COUNT(lt) > 0 THEN true ELSE false END
             FROM LoanTransaction lt
             WHERE lt.loan = :loan
