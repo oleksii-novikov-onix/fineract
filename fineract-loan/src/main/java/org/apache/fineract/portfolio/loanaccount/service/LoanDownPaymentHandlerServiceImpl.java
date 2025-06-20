@@ -95,7 +95,7 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
                 loanTransaction);
 
         if (loanTransaction.isNotZero()) {
-            loanTransactionRepository.save(loanTransaction);
+            loan.addLoanTransaction(loanTransaction);
         }
 
         if (loanTransaction.isNotRepaymentLikeType() && loanTransaction.isNotWaiver() && loanTransaction.isNotRecoveryRepayment()) {

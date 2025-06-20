@@ -372,28 +372,9 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             SELECT lt FROM LoanTransaction lt
             WHERE lt.loan = :loan
                 AND lt.reversed = false
-                AND lt.typeOf NOT IN (
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.DISBURSEMENT,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REPAYMENT_AT_DISBURSEMENT,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INCOME_POSTING,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRA,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.MARKED_FOR_RESCHEDULING,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ACTIVITY,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.APPROVE_TRANSFER,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INITIATE_TRANSFER,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REJECT_TRANSFER,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.WITHDRAW_TRANSFER,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CHARGE_OFF,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REAMORTIZE,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REAGE,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRACT_TERMINATION,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT
-                )
+                AND lt.typeOf NOT IN :types
             """)
-    List<LoanTransaction> findNonReversedPaymentTransactionsByLoan(@Param("loan") Loan loan);
+    List<LoanTransaction> findNonReversedByLoanAndExcludedTypes(@Param("loan") Loan loan, @Param("loan") Set<LoanTransactionType> types);
 
     @Query("""
             SELECT lt FROM LoanTransaction lt
@@ -484,5 +465,14 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             ORDER BY lt.dateOf, lt.id
             """)
     List<LoanTransaction> findNonReversedMonetaryTransactionsByLoan(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT COALESCE(SUM(lt.amount), 0)
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf = org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.RECOVERY_REPAYMENT
+            """)
+    BigDecimal calculateTotalRecoveryPaymentAmount(@Param("loan") Loan loan);
 
 }

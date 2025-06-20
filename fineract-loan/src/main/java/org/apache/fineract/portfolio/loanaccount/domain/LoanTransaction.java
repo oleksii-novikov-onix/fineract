@@ -956,9 +956,14 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         this.dateOf = transactionDate;
     }
 
-    public boolean hasDerivedComponentsCalculated() {
-        return this.principalPortion != null || this.interestPortion != null || this.feeChargesPortion != null
-                || this.penaltyChargesPortion != null || this.overPaymentPortion != null;
+    public static Set<LoanTransactionType> getNonPaymentTypes() {
+        return Set.of(LoanTransactionType.DISBURSEMENT, LoanTransactionType.REPAYMENT_AT_DISBURSEMENT, LoanTransactionType.INCOME_POSTING,
+                LoanTransactionType.CONTRA, LoanTransactionType.MARKED_FOR_RESCHEDULING, LoanTransactionType.ACCRUAL,
+                LoanTransactionType.ACCRUAL_ADJUSTMENT, LoanTransactionType.ACCRUAL_ACTIVITY, LoanTransactionType.APPROVE_TRANSFER,
+                LoanTransactionType.INITIATE_TRANSFER, LoanTransactionType.REJECT_TRANSFER, LoanTransactionType.WITHDRAW_TRANSFER,
+                LoanTransactionType.CHARGE_OFF, LoanTransactionType.REAMORTIZE, LoanTransactionType.REAGE,
+                LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION, LoanTransactionType.CONTRACT_TERMINATION,
+                LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT);
     }
 
 }

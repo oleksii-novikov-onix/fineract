@@ -179,8 +179,8 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
             }
 
             if (loanTransaction.isRepaymentLikeType() || loanTransaction.isInterestWaiver() || loanTransaction.isRecoveryRepayment()) {
-                // pass through for fresh transactions that haven't been processed yet
-                if (!loanTransaction.hasDerivedComponentsCalculated()) {
+                // pass through for new transactions
+                if (loanTransaction.getId() == null) {
                     processLatestTransaction(loanTransaction, new TransactionCtx(currency, installments, charges, overpaymentHolder, null));
                     loanTransaction.adjustInterestComponent();
                 } else {
@@ -518,8 +518,8 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
     private void recalculateCreditTransaction(ChangedTransactionDetail changedTransactionDetail, LoanTransaction loanTransaction,
             MonetaryCurrency currency, List<LoanRepaymentScheduleInstallment> installments, MoneyHolder overpaymentHolder) {
-        // pass through for fresh transactions that haven't been processed yet
-        if (!loanTransaction.hasDerivedComponentsCalculated()) {
+        // pass through for new transactions
+        if (loanTransaction.getId() == null) {
             return;
         }
         final LoanTransaction newLoanTransaction = LoanTransaction.copyTransactionProperties(loanTransaction);

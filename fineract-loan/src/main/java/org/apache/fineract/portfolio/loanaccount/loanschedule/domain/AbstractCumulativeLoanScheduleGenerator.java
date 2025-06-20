@@ -2193,7 +2193,8 @@ public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanSch
             final LocalDate scheduleTillDate) {
         // Loan transactions to process and find the variation on payments
         Collection<RecalculationDetail> recalculationDetails = new ArrayList<>();
-        List<LoanTransaction> paymentTransactions = loanTransactionRepository.findNonReversedPaymentTransactionsByLoan(loan);
+        final List<LoanTransaction> paymentTransactions = loanTransactionRepository.findNonReversedByLoanAndExcludedTypes(loan,
+                LoanTransaction.getNonPaymentTypes());
         for (LoanTransaction loanTransaction : paymentTransactions) {
             recalculationDetails.add(new RecalculationDetail(loanTransaction.getTransactionDate(),
                     LoanTransaction.copyTransactionProperties(loanTransaction)));

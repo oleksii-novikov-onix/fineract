@@ -123,14 +123,8 @@ public class LoanBalanceService {
 
     private Money calculateTotalRecoveredPayments(Loan loan) {
         // in case logic for reversing recovered payment is implemented handle subtraction from totalRecoveredPayments
-        Money cumulativePaid = Money.zero(loan.getCurrency());
-
-        for (final LoanTransaction recoveredPayment : loan.getLoanTransactions()) {
-            if (recoveredPayment.isRecoveryRepayment()) {
-                cumulativePaid = cumulativePaid.plus(recoveredPayment.getAmount(loan.getCurrency()));
-            }
-        }
-        return cumulativePaid;
+        final BigDecimal totalRecoveryAmount = loanTransactionRepository.calculateTotalRecoveryPaymentAmount(loan);
+        return Money.of(loan.getCurrency(), totalRecoveryAmount);
     }
 
     public void updateLoanOutstandingBalances(Loan loan) {
