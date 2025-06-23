@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.loanaccount.service;
 import jakarta.persistence.FlushModeType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.persistence.FlushModeHandler;
@@ -35,6 +36,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionComparator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanproduct.domain.CreditAllocationTransactionType;
 import org.springframework.stereotype.Service;
@@ -129,7 +131,14 @@ public class LoanBalanceService {
 
     public void updateLoanOutstandingBalances(Loan loan) {
         Money outstanding = Money.zero(loan.getCurrency());
-        final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedMonetaryTransactionsByLoan(loan);
+        final List<LoanTransaction> loanTransactions = new ArrayList<>();
+        for (final LoanTransaction transaction : loan.getLoanTransactions()) {
+            if (transaction.isNotReversed() && !transaction.isNonMonetaryTransaction()) {
+                loanTransactions.add(transaction);
+            }
+        }
+        loanTransactions.sort(LoanTransactionComparator.INSTANCE);
+
         for (LoanTransaction loanTransaction : loanTransactions) {
             if (loanTransaction.isDisbursement() || loanTransaction.isIncomePosting() || loanTransaction.isCapitalizedIncome()) {
                 outstanding = outstanding.plus(loanTransaction.getAmount(loan.getCurrency()))
