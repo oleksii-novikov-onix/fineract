@@ -378,7 +378,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.typeOf NOT IN :types
             ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
-    List<LoanTransaction> findNonReversedByLoanAndExcludedTypes(@Param("loan") Loan loan, @Param("loan") Set<LoanTransactionType> types);
+    List<LoanTransaction> findNonReversedByLoanAndExcludedTypes(@Param("loan") Loan loan, @Param("types") Set<LoanTransactionType> types);
 
     @Query("""
             SELECT lt FROM LoanTransaction lt
