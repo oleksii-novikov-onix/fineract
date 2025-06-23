@@ -184,7 +184,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
                 AND lt.typeOf IN :types
                 AND lt.dateOf > :transactionDate
-            ORDER BY lt.dateOf
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndTypesAndAfterDate(@Param("loan") Loan loan,
             @Param("types") Set<LoanTransactionType> types, @Param("transactionDate") LocalDate transactionDate);
@@ -196,7 +196,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
                 AND lt.typeOf = :type
                 AND lt.dateOf > :transactionDate
-            ORDER BY lt.dateOf
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndTypeAndAfterDate(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
             @Param("transactionDate") LocalDate transactionDate);
@@ -219,6 +219,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
                 AND lt.typeOf IN :types
                 AND lt.id NOT IN :existingTransactionIds
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndTypesAndNotInIds(@Param("loan") Loan loan, @Param("types") Set<LoanTransactionType> types,
             @Param("existingTransactionIds") List<Long> existingTransactionIds);
@@ -229,6 +230,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             WHERE lt.loan = :loan
                 AND lt.reversed = false
                 AND lt.typeOf IN :types
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndTypes(@Param("loan") Loan loan, @Param("types") Set<LoanTransactionType> types);
 
@@ -238,6 +240,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             WHERE lt.loan = :loan
                 AND lt.reversed = false
                 AND lt.typeOf = :type
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndType(@Param("loan") Loan loan, @Param("type") LoanTransactionType type);
 
@@ -248,7 +251,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
                 AND lt.dateOf >= :date
                 AND lt.typeOf IN :types
-            ORDER BY lt.dateOf
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndTypesAndOnOrAfterDate(@Param("loan") Loan loan,
             @Param("types") Set<LoanTransactionType> types, @Param("date") LocalDate date);
@@ -333,7 +336,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.reversed = false
                 AND lt.typeOf = :type
                 AND lt.dateOf IN :transactionDates
-            ORDER BY lt.id
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedLoanAndTypeAndDates(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
             @Param("transactionDates") Set<LocalDate> transactionDates);
@@ -373,6 +376,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             WHERE lt.loan = :loan
                 AND lt.reversed = false
                 AND lt.typeOf NOT IN :types
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedByLoanAndExcludedTypes(@Param("loan") Loan loan, @Param("loan") Set<LoanTransactionType> types);
 
@@ -392,7 +396,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                         org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION,
                         org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT
                 )
-            ORDER BY lt.dateOf, lt.id
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedTransactionsForReprocessingByLoan(@Param("loan") Loan loan);
 
@@ -462,7 +466,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                     org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRACT_TERMINATION,
                     org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT
                 )
-            ORDER BY lt.dateOf, lt.id
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
             """)
     List<LoanTransaction> findNonReversedMonetaryTransactionsByLoan(@Param("loan") Loan loan);
 
