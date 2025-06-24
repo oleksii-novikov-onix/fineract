@@ -202,7 +202,7 @@ public class ReprocessLoanTransactionsServiceImpl implements ReprocessLoanTransa
         }
         final List<LoanTransaction> newTransactions = changedTransactionDetail.getTransactionChanges().stream()
                 .map(TransactionChangeData::getNewTransaction).toList();
-        loanTransactionRepository.saveAll(newTransactions);
+        loan.getLoanTransactions().addAll(newTransactions);
         loanBalanceService.updateLoanSummaryDerivedFields(loan);
         return changedTransactionDetail;
     }

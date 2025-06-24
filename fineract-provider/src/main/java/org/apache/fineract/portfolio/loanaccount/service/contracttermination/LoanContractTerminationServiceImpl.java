@@ -48,7 +48,6 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
 import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
-import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.apache.fineract.portfolio.loanaccount.service.ProgressiveLoanTransactionValidator;
 import org.apache.fineract.portfolio.loanaccount.service.ReprocessLoanTransactionsService;
@@ -70,7 +69,6 @@ public class LoanContractTerminationServiceImpl {
     private final LoanUtilService loanUtilService;
     private final ExternalIdFactory externalIdFactory;
     private final BusinessEventNotifierService businessEventNotifierService;
-    private final LoanTransactionService loanTransactionService;
     private final LoanScheduleService loanScheduleService;
     private final LoanChargeValidator loanChargeValidator;
     private final ProgressiveLoanTransactionValidator loanTransactionValidator;
