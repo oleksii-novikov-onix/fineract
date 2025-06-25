@@ -906,6 +906,11 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         return Money.of(currency, this.outstandingLoanBalance);
     }
 
+    public boolean isPaymentTransaction() {
+        return this.isNotReversed() && !(this.isDisbursement() || this.isRepaymentAtDisbursement() || this.isNonMonetaryTransaction()
+                || this.isIncomePosting());
+    }
+
     public List<LoanTransactionRelation> getLoanTransactionRelations(Predicate<LoanTransactionRelation> predicate) {
         return loanTransactionRelations.stream().filter(predicate).toList();
     }
@@ -954,16 +959,6 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public void updateTransactionDate(final LocalDate transactionDate) {
         this.dateOf = transactionDate;
-    }
-
-    public static Set<LoanTransactionType> getNonPaymentTypes() {
-        return Set.of(LoanTransactionType.DISBURSEMENT, LoanTransactionType.REPAYMENT_AT_DISBURSEMENT, LoanTransactionType.INCOME_POSTING,
-                LoanTransactionType.CONTRA, LoanTransactionType.MARKED_FOR_RESCHEDULING, LoanTransactionType.ACCRUAL,
-                LoanTransactionType.ACCRUAL_ADJUSTMENT, LoanTransactionType.ACCRUAL_ACTIVITY, LoanTransactionType.APPROVE_TRANSFER,
-                LoanTransactionType.INITIATE_TRANSFER, LoanTransactionType.REJECT_TRANSFER, LoanTransactionType.WITHDRAW_TRANSFER,
-                LoanTransactionType.CHARGE_OFF, LoanTransactionType.REAMORTIZE, LoanTransactionType.REAGE,
-                LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION, LoanTransactionType.CONTRACT_TERMINATION,
-                LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT);
     }
 
 }

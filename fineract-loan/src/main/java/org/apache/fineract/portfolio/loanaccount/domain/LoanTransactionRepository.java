@@ -174,7 +174,7 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
                 AND lt.typeOf IN :types
                 AND lt.dateOf = :transactionDate
             """)
-    Optional<LoanTransaction> findNonReversedByLoanAndTypesAndDate(@Param("loan") Loan loan, @Param("type") Set<LoanTransactionType> types,
+    Optional<LoanTransaction> findNonReversedByLoanAndTypesAndDate(@Param("loan") Loan loan, @Param("types") Set<LoanTransactionType> types,
             @Param("transactionDate") LocalDate transactionDate);
 
     @Query("""
@@ -375,15 +375,6 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             SELECT lt FROM LoanTransaction lt
             WHERE lt.loan = :loan
                 AND lt.reversed = false
-                AND lt.typeOf NOT IN :types
-            ORDER BY lt.dateOf, lt.createdDate, lt.id
-            """)
-    List<LoanTransaction> findNonReversedByLoanAndExcludedTypes(@Param("loan") Loan loan, @Param("types") Set<LoanTransactionType> types);
-
-    @Query("""
-            SELECT lt FROM LoanTransaction lt
-            WHERE lt.loan = :loan
-                AND lt.reversed = false
                 AND lt.typeOf NOT IN (
                         org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRA,
                         org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.MARKED_FOR_RESCHEDULING,
@@ -430,20 +421,6 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             """)
     boolean existsNonReversedByLoanAndTypeAndAfterDate(@Param("loan") Loan loan, @Param("type") LoanTransactionType type,
             @Param("transactionDate") LocalDate transactionDate);
-
-    @Query("""
-            SELECT MAX(lt.dateOf) FROM LoanTransaction lt
-            WHERE lt.loan = :loan
-                AND lt.reversed = false
-                AND lt.typeOf NOT IN (
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ACTIVITY,
-                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INCOME_POSTING
-                )
-                AND lt.dateOf > :disbursementDate
-            """)
-    Optional<LocalDate> findLastUserTransactionAfterDate(@Param("loan") Loan loan, @Param("disbursementDate") LocalDate disbursementDate);
 
     @Query("""
             SELECT lt FROM LoanTransaction lt

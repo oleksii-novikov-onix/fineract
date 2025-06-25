@@ -64,6 +64,7 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
     private final InterestScheduleModelRepositoryWrapper modelRepository;
     private final LoanTransactionRepository loanTransactionRepository;
     private final LoanBalanceService loanBalanceService;
+    private final LoanTransactionService loanTransactionService;
 
     @Override
     public boolean canProcessLatestTransactionOnly(Loan loan, LoanTransaction loanTransaction,
@@ -163,8 +164,8 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
     public Optional<ChangedTransactionDetail> processPostDisbursementTransactions(Loan loan) {
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = getTransactionProcessor(
                 loan.getTransactionProcessingStrategyCode());
-        final List<LoanTransaction> allNonContraTransactionsPostDisbursement = loanTransactionRepository
-                .findNonReversedTransactionsForReprocessingByLoan(loan);
+        final List<LoanTransaction> allNonContraTransactionsPostDisbursement = loanTransactionService
+                .retrieveListOfTransactionsForReprocessing(loan);
 
         final List<LoanTransaction> copyTransactions = new ArrayList<>();
 
