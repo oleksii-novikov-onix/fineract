@@ -48,6 +48,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanSchedul
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
 import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.apache.fineract.portfolio.loanaccount.service.ProgressiveLoanTransactionValidator;
 import org.apache.fineract.portfolio.loanaccount.service.ReprocessLoanTransactionsService;
@@ -72,6 +73,7 @@ public class LoanContractTerminationServiceImpl {
     private final LoanScheduleService loanScheduleService;
     private final LoanChargeValidator loanChargeValidator;
     private final ProgressiveLoanTransactionValidator loanTransactionValidator;
+    private final LoanTransactionService loanTransactionService;
 
     public CommandProcessingResult applyContractTermination(final JsonCommand command) {
         final Loan loan = loanAssembler.assembleFrom(command.getLoanId());
@@ -100,7 +102,7 @@ public class LoanContractTerminationServiceImpl {
         changes.put(LoanApiConstants.subStatusAttributeName, loan.getLoanSubStatus().getCode());
 
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {
-            final List<LoanTransaction> loanTransactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
+            final List<LoanTransaction> loanTransactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
             loanTransactions.add(contractTermination);
             reprocessLoanTransactionsService.reprocessParticularTransactions(loan, loanTransactions);
             loan.addLoanTransaction(contractTermination);
