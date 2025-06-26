@@ -3014,7 +3014,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         loan.addLoanTransaction(chargebackTransaction);
         if (loan.isInterestBearing() && loan.isInterestRecalculationEnabled()) {
-            final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
+            final List<LoanTransaction> transactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
             loanTransactionProcessingService.reprocessLoanTransactions(loan.getTransactionProcessingStrategyCode(),
                     loan.getDisbursementDate(), transactions, loan.getCurrency(), loan.getRepaymentScheduleInstallments(),
                     loan.getActiveCharges());
