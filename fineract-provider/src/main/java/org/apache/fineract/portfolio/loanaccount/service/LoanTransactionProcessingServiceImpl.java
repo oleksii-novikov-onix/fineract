@@ -38,7 +38,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
@@ -62,7 +61,6 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
     private final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessorFactory;
     private final LoanTermVariationsMapper loanMapper;
     private final InterestScheduleModelRepositoryWrapper modelRepository;
-    private final LoanTransactionRepository loanTransactionRepository;
     private final LoanBalanceService loanBalanceService;
     private final LoanTransactionService loanTransactionService;
 
@@ -90,8 +88,7 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
         ProgressiveTransactionCtx progressiveContext = new ProgressiveTransactionCtx(loan.getCurrency(),
                 loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(), new MoneyHolder(loan.getTotalOverpaidAsMoney()),
                 new ChangedTransactionDetail(), savedModel.orElse(null), getTotalRefundInterestAmount(loan));
-        progressiveContext.getAlreadyProcessedTransactions()
-                .addAll(loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan));
+        progressiveContext.getAlreadyProcessedTransactions().addAll(loanTransactionService.retrieveListOfTransactionsForReprocessing(loan));
         progressiveContext.setChargedOff(loan.isChargedOff());
         progressiveContext.setContractTerminated(loan.isContractTermination());
         ChangedTransactionDetail result = advancedProcessor.processLatestTransaction(loanTransaction, progressiveContext);
