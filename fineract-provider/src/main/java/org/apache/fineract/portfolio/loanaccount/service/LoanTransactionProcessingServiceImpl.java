@@ -74,6 +74,9 @@ public class LoanTransactionProcessingServiceImpl implements LoanTransactionProc
         if (!DateUtils.isEqualBusinessDate(loanTransaction.getTransactionDate())) {
             return false;
         }
+        if (loan.hasChargesAffectedByBackdatedRepayment(loanTransaction)) {
+            return false;
+        }
         LoanInterestRecalculationDetails interestRecalculationDetails = loan.getLoanInterestRecalculationDetails();
         if (interestRecalculationDetails != null && ((interestRecalculationDetails.getRestFrequencyType().isSameAsRepayment()
                 && interestRecalculationDetails.getPreCloseInterestCalculationStrategy().calculateTillPreClosureDateEnabled())

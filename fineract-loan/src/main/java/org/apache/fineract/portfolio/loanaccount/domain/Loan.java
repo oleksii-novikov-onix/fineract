@@ -79,6 +79,7 @@ import org.apache.fineract.portfolio.loanproduct.domain.LoanSupportedInterestRef
 import org.apache.fineract.portfolio.rate.domain.Rate;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.domain.PostDatedChecks;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.lang.NonNull;
 
 @Entity
 @Table(name = "m_loan", uniqueConstraints = { @UniqueConstraint(columnNames = { "account_no" }, name = "loan_account_no_UNIQUE"),
@@ -1240,6 +1241,25 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public Set<LoanCharge> getActiveCharges() {
         return this.charges == null ? new HashSet<>() : this.charges.stream().filter(LoanCharge::isActive).collect(Collectors.toSet());
+    }
+
+    public boolean hasChargesAffectedByBackdatedRepayment(@NonNull final LoanTransaction transaction) {
+        if (!transaction.isRepayment()) {
+            return false;
+        }
+
+        if (this.charges == null || this.charges.isEmpty()) {
+            return false;
+        }
+
+        final boolean isBackdatedTransaction = DateUtils.isBeforeBusinessDate(transaction.getTransactionDate());
+
+        if (isBackdatedTransaction) {
+            return this.charges.stream().filter(LoanCharge::isActive).filter(loanCharge -> loanCharge.getDueLocalDate() != null)
+                    .anyMatch(loanCharge -> DateUtils.isAfter(loanCharge.getDueLocalDate(), transaction.getTransactionDate()));
+        }
+
+        return false;
     }
 
     public LoanCharge fetchLoanChargesById(final Long id) {
