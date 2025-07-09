@@ -248,7 +248,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "writtenoffon_date")
     private LocalDate writtenOffOnDate;
 
-    @Setter()
+    @Setter
     @Column(name = "rescheduledon_date")
     private LocalDate rescheduledOnDate;
 
@@ -256,7 +256,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @JoinColumn(name = "rescheduledon_userid")
     private AppUser rescheduledByUser;
 
-    @Setter()
+    @Setter
     @Column(name = "expected_maturedon_date")
     private LocalDate expectedMaturityDate;
 

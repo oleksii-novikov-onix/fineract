@@ -904,6 +904,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         boolean processLatest = isTransactionChronologicallyLatest //
                 && !loan.isForeclosure() //
+                && !loan.hasChargesAffectedByBackdatedRepayment(refundTransaction) //
                 && loanTransactionProcessingService.canProcessLatestTransactionOnly(loan, refundTransaction, currentInstallment); //
         if (processLatest) {
             loanTransactionProcessingService.processLatestTransaction(loan.getTransactionProcessingStrategyCode(), refundTransaction,
