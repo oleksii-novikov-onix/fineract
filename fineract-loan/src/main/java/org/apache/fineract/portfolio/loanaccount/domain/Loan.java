@@ -248,7 +248,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "writtenoffon_date")
     private LocalDate writtenOffOnDate;
 
-    @Setter
+    @Setter()
     @Column(name = "rescheduledon_date")
     private LocalDate rescheduledOnDate;
 
@@ -256,7 +256,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @JoinColumn(name = "rescheduledon_userid")
     private AppUser rescheduledByUser;
 
-    @Setter
+    @Setter()
     @Column(name = "expected_maturedon_date")
     private LocalDate expectedMaturityDate;
 
@@ -1252,11 +1252,27 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             return false;
         }
 
+        if (!isProgressiveSchedule()) {
+            return false;
+        }
+
         final boolean isBackdatedTransaction = DateUtils.isBeforeBusinessDate(transaction.getTransactionDate());
 
         if (isBackdatedTransaction) {
-            return this.charges.stream().filter(LoanCharge::isActive).filter(loanCharge -> loanCharge.getDueLocalDate() != null)
-                    .anyMatch(loanCharge -> DateUtils.isAfter(loanCharge.getDueLocalDate(), transaction.getTransactionDate()));
+            return this.charges.stream().filter(LoanCharge::isActive)
+                    .filter(loanCharge -> loanCharge.isSpecifiedDueDate() || loanCharge.isOverdueInstallmentCharge())
+                    .filter(loanCharge -> loanCharge.getDueLocalDate() != null).anyMatch(loanCharge -> {
+                        LocalDate comparisonDate;
+
+                        if (DateUtils.isBefore(loanCharge.getDueLocalDate(), loanCharge.getSubmittedOnDate())) {
+                            comparisonDate = loanCharge.getDueLocalDate();
+                        } else {
+                            comparisonDate = loanCharge.getSubmittedOnDate() != null ? loanCharge.getSubmittedOnDate()
+                                    : loanCharge.getDueLocalDate();
+                        }
+
+                        return DateUtils.isAfter(comparisonDate, transaction.getTransactionDate());
+                    });
         }
 
         return false;

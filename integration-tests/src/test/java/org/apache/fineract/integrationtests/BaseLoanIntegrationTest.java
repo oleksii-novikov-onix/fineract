@@ -645,49 +645,56 @@ public abstract class BaseLoanIntegrationTest extends IntegrationTest {
         }
     }
 
-    protected void verifyTransactions(Long loanId, TransactionExt... transactions) {
-        GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoan(requestSpec, responseSpec, loanId.intValue());
+    protected void verifyTransactions(final Long loanId, final TransactionExt... transactions) {
+        final GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoan(requestSpec, responseSpec, loanId.intValue());
         if (transactions == null || transactions.length == 0) {
             assertNull(loanDetails.getTransactions(), "No transaction is expected on loan " + loanId);
         } else {
+            Assertions.assertNotNull(loanDetails.getTransactions());
             Assertions.assertEquals(transactions.length, loanDetails.getTransactions().size(), "Number of transactions on loan " + loanId);
 
             Arrays.stream(transactions).forEach(tr -> {
-                Optional<GetLoansLoanIdTransactions> matchingTransaction = loanDetails.getTransactions().stream()
-                        .filter(item -> Objects.equals(Utils.getDoubleValue(item.getAmount()), tr.amount)
-                                && Objects.equals(item.getType().getValue(), tr.type)
-                                && Objects.equals(item.getDate(), LocalDate.parse(tr.date, dateTimeFormatter)))
-                        .findFirst();
+                final List<GetLoansLoanIdTransactions> transactionsByDate = loanDetails.getTransactions().stream()
+                        .filter(item -> Objects.equals(item.getDate(), LocalDate.parse(tr.date, dateTimeFormatter))).toList();
 
-                if (matchingTransaction.isPresent()) {
-                    GetLoansLoanIdTransactions item = matchingTransaction.get();
-                    Assertions.assertAll("Transaction verification for " + tr,
-                            () -> Assertions.assertEquals(tr.amount, Utils.getDoubleValue(item.getAmount()), "Amount mismatch"),
-                            () -> Assertions.assertEquals(tr.type, item.getType().getValue(), "Type mismatch"),
-                            () -> Assertions.assertEquals(LocalDate.parse(tr.date, dateTimeFormatter), item.getDate(), "Date mismatch"),
-                            () -> Assertions.assertEquals(tr.outstandingPrincipal, Utils.getDoubleValue(item.getOutstandingLoanBalance()),
-                                    String.format("Outstanding principal mismatch - Expected: %.1f, Actual: %.1f", tr.outstandingPrincipal,
-                                            Utils.getDoubleValue(item.getOutstandingLoanBalance()))),
-                            () -> Assertions.assertEquals(tr.principalPortion, Utils.getDoubleValue(item.getPrincipalPortion()),
-                                    String.format("Principal portion mismatch - Expected: %.1f, Actual: %.1f", tr.principalPortion,
-                                            Utils.getDoubleValue(item.getPrincipalPortion()))),
-                            () -> Assertions.assertEquals(tr.interestPortion, Utils.getDoubleValue(item.getInterestPortion()),
-                                    String.format("Interest portion mismatch - Expected: %.1f, Actual: %.1f", tr.interestPortion,
-                                            Utils.getDoubleValue(item.getInterestPortion()))),
-                            () -> Assertions.assertEquals(tr.feePortion, Utils.getDoubleValue(item.getFeeChargesPortion()),
-                                    String.format("Fee portion mismatch - Expected: %.1f, Actual: %.1f", tr.feePortion,
-                                            Utils.getDoubleValue(item.getFeeChargesPortion()))),
-                            () -> Assertions.assertEquals(tr.penaltyPortion, Utils.getDoubleValue(item.getPenaltyChargesPortion()),
-                                    String.format("Penalty portion mismatch - Expected: %.1f, Actual: %.1f", tr.penaltyPortion,
-                                            Utils.getDoubleValue(item.getPenaltyChargesPortion()))),
-                            () -> Assertions.assertEquals(tr.overpaymentPortion, Utils.getDoubleValue(item.getOverpaymentPortion()),
-                                    String.format("Overpayment portion mismatch - Expected: %.1f, Actual: %.1f", tr.overpaymentPortion,
-                                            Utils.getDoubleValue(item.getOverpaymentPortion()))),
-                            () -> Assertions.assertEquals(tr.unrecognizedPortion, Utils.getDoubleValue(item.getUnrecognizedIncomePortion()),
-                                    String.format("Unrecognized portion mismatch - Expected: %.1f, Actual: %.1f", tr.unrecognizedPortion,
-                                            Utils.getDoubleValue(item.getUnrecognizedIncomePortion()))));
-                } else {
-                    Assertions.fail("Required transaction not found: " + tr + " on loan " + loanId);
+                if (transactionsByDate.isEmpty()) {
+                    Assertions.fail("No transactions found for date " + tr.date + " on loan " + loanId);
+                    return;
+                }
+
+                boolean found = transactionsByDate.stream()
+                        .anyMatch(item -> Objects.equals(Utils.getDoubleValue(item.getAmount()), tr.amount)
+                                && Objects.equals(item.getType().getValue(), tr.type)
+                                && Objects.equals(Utils.getDoubleValue(item.getOutstandingLoanBalance()), tr.outstandingPrincipal)
+                                && Objects.equals(Utils.getDoubleValue(item.getPrincipalPortion()), tr.principalPortion)
+                                && Objects.equals(Utils.getDoubleValue(item.getInterestPortion()), tr.interestPortion)
+                                && Objects.equals(Utils.getDoubleValue(item.getFeeChargesPortion()), tr.feePortion)
+                                && Objects.equals(Utils.getDoubleValue(item.getPenaltyChargesPortion()), tr.penaltyPortion)
+                                && Objects.equals(Utils.getDoubleValue(item.getOverpaymentPortion()), tr.overpaymentPortion)
+                                && Objects.equals(Utils.getDoubleValue(item.getUnrecognizedIncomePortion()), tr.unrecognizedPortion));
+
+                if (!found) {
+                    final StringBuilder errorMessage = new StringBuilder();
+                    errorMessage.append("Required transaction not found: ").append(tr).append(" on loan ").append(loanId);
+                    errorMessage.append("\nTransactions found for date ").append(tr.date).append(":");
+
+                    for (int i = 0; i < transactionsByDate.size(); i++) {
+                        GetLoansLoanIdTransactions item = transactionsByDate.get(i);
+                        errorMessage.append("\n  Transaction ").append(i + 1).append(": ");
+                        errorMessage.append("amount=").append(Utils.getDoubleValue(item.getAmount()));
+                        errorMessage.append(", type=").append(item.getType().getValue());
+                        errorMessage.append(", date=").append(item.getDate().format(dateTimeFormatter));
+                        errorMessage.append(", outstandingPrincipal=").append(Utils.getDoubleValue(item.getOutstandingLoanBalance()));
+                        errorMessage.append(", principalPortion=").append(Utils.getDoubleValue(item.getPrincipalPortion()));
+                        errorMessage.append(", interestPortion=").append(Utils.getDoubleValue(item.getInterestPortion()));
+                        errorMessage.append(", feePortion=").append(Utils.getDoubleValue(item.getFeeChargesPortion()));
+                        errorMessage.append(", penaltyPortion=").append(Utils.getDoubleValue(item.getPenaltyChargesPortion()));
+                        errorMessage.append(", unrecognizedPortion=").append(Utils.getDoubleValue(item.getUnrecognizedIncomePortion()));
+                        errorMessage.append(", overpaymentPortion=").append(Utils.getDoubleValue(item.getOverpaymentPortion()));
+                        errorMessage.append(", reversed=").append(item.getManuallyReversed() != null ? item.getManuallyReversed() : false);
+                    }
+
+                    Assertions.fail(errorMessage.toString());
                 }
             });
         }
