@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.loanaccount.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeBalance;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -39,7 +40,7 @@ public interface LoanBuyDownFeeBalanceRepository
     List<LoanBuyDownFeeBalance> findRepaymentPeriodDataByLoanId(@Param("loanId") Long loanId);
 
     @Query("SELECT COALESCE(SUM(lbfb.amount), 0) FROM LoanBuyDownFeeBalance lbfb WHERE lbfb.loan.id = :loanId")
-    BigDecimal calculateBuyDownFee(@Param("loanId") Long loanId);
+    Optional<BigDecimal> calculateBuyDownFee(@Param("loanId") Long loanId);
 
     @Query("SELECT COALESCE(SUM(lbfb.amountAdjustment), 0) FROM LoanBuyDownFeeBalance lbfb WHERE lbfb.loan.id = :loanId")
     BigDecimal calculateBuyDownFeeAdjustment(@Param("loanId") Long loanId);

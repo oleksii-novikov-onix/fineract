@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.delinquency.service;
 import static org.apache.fineract.portfolio.loanaccount.domain.Loan.EARLIEST_UNPAID_DATE;
 import static org.apache.fineract.portfolio.loanaccount.domain.Loan.NEXT_UNPAID_DUE_DATE;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Comparator;
@@ -59,6 +60,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleIns
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBuyDownFeeReadService;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +81,7 @@ public class DelinquencyReadPlatformServiceImpl implements DelinquencyReadPlatfo
     private final DelinquencyEffectivePauseHelper delinquencyEffectivePauseHelper;
     private final ConfigurationDomainService configurationDomainService;
     private final LoanTransactionRepository loanTransactionRepository;
+    private final LoanBuyDownFeeReadService loanBuyDownFeeReadService;
 
     @Override
     public List<DelinquencyRangeData> retrieveAllDelinquencyRanges() {
@@ -148,7 +151,7 @@ public class DelinquencyReadPlatformServiceImpl implements DelinquencyReadPlatfo
             // Overpaid
             // loans
             collectionData = loanDelinquencyDomainService.getOverdueCollectionData(loan, effectiveDelinquencyList);
-            collectionData.setAvailableDisbursementAmount(loan.getApprovedPrincipal().subtract(loan.getDisbursedAmount()));
+            collectionData.setAvailableDisbursementAmount(calculateAvailableDisbursementAmount(loan));
             collectionData.setNextPaymentDueDate(possibleNextRepaymentDate(nextPaymentDueDateConfig, loan));
 
             final LoanTransaction lastPayment = loan.getLastPaymentTransaction();
@@ -171,6 +174,17 @@ public class DelinquencyReadPlatformServiceImpl implements DelinquencyReadPlatfo
         }
 
         return collectionData;
+    }
+
+    private BigDecimal calculateAvailableDisbursementAmount(@NonNull final Loan loan) {
+        BigDecimal availableDisbursementAmount = loan.getApprovedPrincipal().subtract(loan.getDisbursedAmount());
+        final BigDecimal totalCapitalizedIncome = loan.getSummary() != null
+                ? MathUtil.nullToZero(loan.getSummary().getTotalCapitalizedIncome())
+                : BigDecimal.ZERO;
+        availableDisbursementAmount = availableDisbursementAmount.subtract(totalCapitalizedIncome);
+        final BigDecimal totalBuyDownFee = loanBuyDownFeeReadService.calculateTotalBuyDownFee(loan.getId());
+
+        return availableDisbursementAmount.subtract(totalBuyDownFee);
     }
 
     private void addInstallmentLevelDelinquencyData(CollectionData collectionData, Long loanId) {

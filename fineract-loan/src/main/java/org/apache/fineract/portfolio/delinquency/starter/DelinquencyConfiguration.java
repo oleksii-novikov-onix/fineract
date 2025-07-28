@@ -43,6 +43,7 @@ import org.apache.fineract.portfolio.delinquency.validator.DelinquencyRangeParse
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBuyDownFeeReadService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionReadService;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -62,11 +63,11 @@ public class DelinquencyConfiguration {
             LoanInstallmentDelinquencyTagRepository repositoryLoanInstallmentDelinquencyTag,
             LoanDelinquencyActionRepository loanDelinquencyActionRepository,
             DelinquencyEffectivePauseHelper delinquencyEffectivePauseHelper, ConfigurationDomainService configurationDomainService,
-            LoanTransactionRepository loanTransactionRepository) {
+            LoanTransactionRepository loanTransactionRepository, final LoanBuyDownFeeReadService loanBuyDownFeeReadService) {
         return new DelinquencyReadPlatformServiceImpl(repositoryRange, repositoryBucket, repositoryLoanDelinquencyTagHistory, mapperRange,
                 mapperBucket, mapperLoanDelinquencyTagHistory, loanRepository, loanDelinquencyDomainService,
                 repositoryLoanInstallmentDelinquencyTag, loanDelinquencyActionRepository, delinquencyEffectivePauseHelper,
-                configurationDomainService, loanTransactionRepository);
+                configurationDomainService, loanTransactionRepository, loanBuyDownFeeReadService);
     }
 
     @Bean

@@ -95,6 +95,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBuyDownFeeReadService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargeReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargeService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService;
@@ -359,11 +360,14 @@ public class LoanAccountDelinquencyRangeEventSerializerTest {
         LoanDelinquencyActionRepository loanDelinquencyActionRepository = Mockito.mock(LoanDelinquencyActionRepository.class);
         DelinquencyEffectivePauseHelper delinquencyEffectivePauseHelper = Mockito.mock(DelinquencyEffectivePauseHelper.class);
         ConfigurationDomainService configurationDomainService = Mockito.mock(ConfigurationDomainService.class);
+        LoanBuyDownFeeReadService loanBuyDownFeeReadService = Mockito.mock(LoanBuyDownFeeReadService.class);
+        when(loanBuyDownFeeReadService.calculateTotalBuyDownFee(Mockito.anyLong())).thenReturn(BigDecimal.ZERO);
 
         DelinquencyReadPlatformService delinquencyReadPlatformService = new DelinquencyReadPlatformServiceImpl(repositoryRange,
                 repositoryBucket, repositoryLoanDelinquencyTagHistory, mapperRange, mapperBucket, mapperLoanDelinquencyTagHistory,
                 loanRepository, loanDelinquencyDomainService, repositoryLoanInstallmentDelinquencyTag, loanDelinquencyActionRepository,
-                delinquencyEffectivePauseHelper, configurationDomainService, Mockito.mock(LoanTransactionRepository.class));
+                delinquencyEffectivePauseHelper, configurationDomainService, Mockito.mock(LoanTransactionRepository.class),
+                loanBuyDownFeeReadService);
 
         LoanProduct loanProduct = Mockito.mock(LoanProduct.class);
         when(loanProduct.isMultiDisburseLoan()).thenReturn(false);
@@ -386,6 +390,8 @@ public class LoanAccountDelinquencyRangeEventSerializerTest {
         when(loan.getStatus()).thenReturn(LoanStatus.ACTIVE);
         when(loan.getApprovedPrincipal()).thenReturn(BigDecimal.TEN);
         when(loan.getDisbursedAmount()).thenReturn(BigDecimal.ONE);
+        when(loan.getId()).thenReturn(1L);
+        when(loan.getSummary()).thenReturn(null);
         ReflectionTestUtils.setField(loan, "loanTransactions", List.of(transaction1, transaction2));
         when(loan.getLoanTransactions()).thenReturn(List.of(transaction1, transaction2));
         when(loanDelinquencyDomainService.getOverdueCollectionData(Mockito.any(), Mockito.anyList())).thenReturn(collectionData);
