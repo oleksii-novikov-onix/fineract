@@ -51,6 +51,7 @@ import org.apache.fineract.infrastructure.core.serialization.JsonParserHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.investor.data.ExternalTransferData;
 import org.apache.fineract.investor.data.ExternalTransferRequestParameters;
 import org.apache.fineract.investor.data.ExternalTransferStatus;
 import org.apache.fineract.investor.data.ExternalTransferSubStatus;
@@ -80,6 +81,7 @@ public class ExternalAssetOwnersWriteServiceImpl implements ExternalAssetOwnersW
     private final LoanRepository loanRepository;
     private final DelayedSettlementAttributeService delayedSettlementAttributeService;
     private final ConfigurationDomainService configurationDomainService;
+    private final ExternalAssetOwnersReadService externalAssetOwnersReadService;
 
     @Override
     @Transactional
@@ -307,6 +309,7 @@ public class ExternalAssetOwnersWriteServiceImpl implements ExternalAssetOwnersW
         externalAssetOwnerTransfer.setEffectiveDateFrom(effectiveDateFrom);
         externalAssetOwnerTransfer.setEffectiveDateTo(FUTURE_DATE_9999_12_31);
         externalAssetOwnerTransfer.setPurchasePriceRatio(effectiveTransfer.getPurchasePriceRatio());
+        externalAssetOwnerTransfer.setPreviousOwner(effectiveTransfer.getOwner());
         return externalAssetOwnerTransfer;
     }
 
@@ -410,6 +413,7 @@ public class ExternalAssetOwnersWriteServiceImpl implements ExternalAssetOwnersW
         externalAssetOwnerTransfer.setLoanId(loanId);
         externalAssetOwnerTransfer.setExternalLoanId(externalLoanId);
         externalAssetOwnerTransfer.setExternalGroupId(getTransferExternalGroupIdFromJson(json));
+        externalAssetOwnerTransfer.setPreviousOwner(null);
         return externalAssetOwnerTransfer;
     }
 
@@ -428,6 +432,15 @@ public class ExternalAssetOwnersWriteServiceImpl implements ExternalAssetOwnersW
         externalAssetOwnerTransfer.setLoanId(loanId);
         externalAssetOwnerTransfer.setExternalLoanId(externalLoanId);
         externalAssetOwnerTransfer.setExternalGroupId(getTransferExternalGroupIdFromJson(json));
+
+        ExternalAssetOwner previousOwner = null;
+        final ExternalTransferData activeTransfer = externalAssetOwnersReadService.retrieveActiveTransferData(loanId, null, null);
+        if (activeTransfer != null && activeTransfer.getOwner() != null) {
+            final String activeOwnerExternalId = activeTransfer.getOwner().getExternalId();
+            previousOwner = externalAssetOwnerRepository.findByExternalId(ExternalIdFactory.produce(activeOwnerExternalId)).orElse(null);
+        }
+        externalAssetOwnerTransfer.setPreviousOwner(previousOwner);
+
         return externalAssetOwnerTransfer;
     }
 

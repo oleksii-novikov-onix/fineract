@@ -42,6 +42,7 @@ import org.apache.fineract.investor.domain.LoanOwnershipTransferBusinessEvent;
 import org.apache.fineract.investor.service.AccountingService;
 import org.apache.fineract.investor.service.DelayedSettlementAttributeService;
 import org.apache.fineract.investor.service.ExternalAssetOwnerTransferOutstandingInterestCalculation;
+import org.apache.fineract.investor.service.ExternalAssetOwnersReadService;
 import org.apache.fineract.investor.service.LoanTransferabilityService;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.springframework.context.annotation.Conditional;
@@ -66,6 +67,7 @@ public class LoanAccountOwnerTransferBusinessStep implements LoanCOBBusinessStep
     private final LoanTransferabilityService loanTransferabilityService;
     private final DelayedSettlementAttributeService delayedSettlementAttributeService;
     private final ExternalAssetOwnerTransferOutstandingInterestCalculation externalAssetOwnerTransferOutstandingInterestCalculation;
+    private final ExternalAssetOwnersReadService externalAssetOwnersReadService;
 
     @Override
     public Loan execute(Loan loan) {

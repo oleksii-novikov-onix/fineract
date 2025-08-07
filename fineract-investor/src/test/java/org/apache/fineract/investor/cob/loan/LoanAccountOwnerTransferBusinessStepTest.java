@@ -59,6 +59,7 @@ import org.apache.fineract.investor.domain.LoanOwnershipTransferBusinessEvent;
 import org.apache.fineract.investor.service.AccountingService;
 import org.apache.fineract.investor.service.DelayedSettlementAttributeService;
 import org.apache.fineract.investor.service.ExternalAssetOwnerTransferOutstandingInterestCalculation;
+import org.apache.fineract.investor.service.ExternalAssetOwnersReadService;
 import org.apache.fineract.investor.service.LoanTransferabilityService;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
@@ -111,6 +112,9 @@ public class LoanAccountOwnerTransferBusinessStepTest {
     @Mock
     private ExternalAssetOwnerTransferOutstandingInterestCalculation externalAssetOwnerTransferOutstandingInterestCalculation;
 
+    @Mock
+    private ExternalAssetOwnersReadService externalAssetOwnersReadService;
+
     private LoanAccountOwnerTransferBusinessStep underTest;
 
     @BeforeAll
@@ -131,7 +135,8 @@ public class LoanAccountOwnerTransferBusinessStepTest {
         ThreadLocalContextUtil.setBusinessDates(new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, actualDate)));
         underTest = new LoanAccountOwnerTransferBusinessStep(externalAssetOwnerTransferRepository,
                 externalAssetOwnerTransferLoanMappingRepository, accountingService, businessEventNotifierService,
-                loanTransferabilityService, delayedSettlementAttributeService, externalAssetOwnerTransferOutstandingInterestCalculation);
+                loanTransferabilityService, delayedSettlementAttributeService, externalAssetOwnerTransferOutstandingInterestCalculation,
+                externalAssetOwnersReadService);
     }
 
     @AfterEach

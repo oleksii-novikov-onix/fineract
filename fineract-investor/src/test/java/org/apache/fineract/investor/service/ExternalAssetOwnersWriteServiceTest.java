@@ -488,19 +488,18 @@ public class ExternalAssetOwnersWriteServiceTest {
 
         // given
         final JsonCommand command = createJsonCommand(testContext.jsonCommand, testContext.loanId);
-        final JsonElement jsonCommandElement = testContext.fromJsonHelper.parse(testContext.jsonCommand);
 
         when(testContext.delayedSettlementAttributeService.isEnabled(testContext.loanProductId)).thenReturn(false);
         when(testContext.loanRepository.findLoanDataForExternalTransferByLoanId(testContext.loanId))
                 .thenReturn(Optional.of(testContext.loanDataForExternalTransfer));
-        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.OWNER_EXTERNAL_ID, jsonCommandElement))
-                .thenReturn(ownerExternalId);
-        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.TRANSFER_EXTERNAL_ID, jsonCommandElement))
-                .thenReturn(transferExternalId);
-        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.PURCHASE_PRICE_RATIO, jsonCommandElement))
-                .thenReturn(purchaseRatio);
-        when(testContext.fromApiJsonHelper.extractLocalDateNamed(ExternalTransferRequestParameters.SETTLEMENT_DATE, jsonCommandElement))
-                .thenReturn(settlementDate);
+        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.OWNER_EXTERNAL_ID,
+                testContext.fromJsonHelper.parse(testContext.jsonCommand))).thenReturn(ownerExternalId);
+        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.TRANSFER_EXTERNAL_ID,
+                testContext.fromJsonHelper.parse(testContext.jsonCommand))).thenReturn(transferExternalId);
+        when(testContext.fromApiJsonHelper.extractStringNamed(ExternalTransferRequestParameters.PURCHASE_PRICE_RATIO,
+                testContext.fromJsonHelper.parse(testContext.jsonCommand))).thenReturn(purchaseRatio);
+        when(testContext.fromApiJsonHelper.extractLocalDateNamed(ExternalTransferRequestParameters.SETTLEMENT_DATE,
+                testContext.fromJsonHelper.parse(testContext.jsonCommand))).thenReturn(settlementDate);
 
         // when
         assertThrows(PlatformApiDataValidationException.class,
@@ -864,6 +863,9 @@ public class ExternalAssetOwnersWriteServiceTest {
         @Mock
         private ConfigurationDomainService configurationDomainService;
 
+        @Mock
+        private ExternalAssetOwnersReadService externalAssetOwnersReadService;
+
         @InjectMocks
         private ExternalAssetOwnersWriteServiceImpl externalAssetOwnersWriteServiceImpl;
 
@@ -934,6 +936,7 @@ public class ExternalAssetOwnersWriteServiceTest {
                     .thenReturn(List.of("ACTIVE", "TRANSFER_IN_PROGRESS", "TRANSFER_ON_HOLD"));
             lenient().when(configurationDomainService.getAllowedLoanStatusesOfDelayedSettlementForExternalAssetTransfer())
                     .thenReturn(List.of("ACTIVE", "TRANSFER_IN_PROGRESS", "TRANSFER_ON_HOLD", "OVERPAID", "CLOSED_OBLIGATIONS_MET"));
+            lenient().when(externalAssetOwnersReadService.retrieveActiveTransferData(any(Long.class), any(), any())).thenReturn(null);
 
         }
     }
