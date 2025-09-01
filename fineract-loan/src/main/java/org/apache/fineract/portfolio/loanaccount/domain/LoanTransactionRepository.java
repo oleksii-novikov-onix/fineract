@@ -532,4 +532,34 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
     List<LoanTransaction> findTransactionsForChargeOffClassification(@Param("loan") Loan loan,
             @Param("chargeOffDate") LocalDate chargeOffDate, @Param("dateComparison") String dateComparison);
 
+    @Query("""
+            SELECT lt FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+                AND lt.reversed = false
+                AND lt.typeOf NOT IN (
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.DISBURSEMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REPAYMENT_AT_DISBURSEMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRA,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.MARKED_FOR_RESCHEDULING,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ACTIVITY,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.APPROVE_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INITIATE_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REJECT_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.WITHDRAW_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CHARGE_OFF,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REAMORTIZE,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REAGE,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRACT_TERMINATION,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION_ADJUSTMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.BUY_DOWN_FEE,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.BUY_DOWN_FEE_ADJUSTMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.BUY_DOWN_FEE_AMORTIZATION,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.BUY_DOWN_FEE_AMORTIZATION_ADJUSTMENT
+                )
+            ORDER BY lt.dateOf, lt.createdDate, lt.id
+            """)
+    List<LoanTransaction> findPaymentTransactionsByLoan(@Param("loan") Loan loan);
 }
