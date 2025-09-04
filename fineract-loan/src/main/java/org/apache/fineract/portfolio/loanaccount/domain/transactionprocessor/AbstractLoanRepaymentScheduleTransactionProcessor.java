@@ -180,7 +180,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
             if (loanTransaction.isRepaymentLikeType() || loanTransaction.isInterestWaiver() || loanTransaction.isRecoveryRepayment()) {
                 // pass through for new transactions
-                if (loanTransaction.getId() == null) {
+                if (loanTransaction.getId() == null || loanTransaction.needProcessing) {
                     processLatestTransaction(loanTransaction, new TransactionCtx(currency, installments, charges, overpaymentHolder, null));
                     loanTransaction.adjustInterestComponent();
                 } else {
