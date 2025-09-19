@@ -1420,14 +1420,14 @@ Feature: LoanReAging
       | frequencyNumber | frequencyType | startDate     | numberOfInstallments |
       | 1               | WEEKS        | 01 April 2025  | 1                    |
     Then Loan Repayment schedule has 6 periods, with the following data for periods:
-      | Nr | Days | Date             | Paid date     | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid | In advance | Late  | Outstanding |
-      |    |      | 01 January 2025  |               | 1000.0          |               |          | 0.0  |           |   0.0 | 0.0  |            |       |             |
-      | 1  | 0    | 01 January 2025  | 01 March 2025 |  750.0          | 250.0         | 0.0      | 0.0  | 0.0       | 250.0 |250.0 | 0.0        | 250.0 |   0.0       |
-      | 2  | 31   | 01 February 2025 | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 3  | 28   | 01 March 2025    | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 4  | 31   | 01 April 2025    | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 5  |  0   | 01 April 2025    |               |    0.0          |  750.0        | 0.0      | 0.0  | 0.0       | 750.0 | 0.0  | 0.0        | 0.0   | 750.0       |
-      | 6  | 32   | 03 May 2025      | 03 May 2025   |    0.0          |   0.0         | 0.0      | 0.0  | 10.0      |  10.0 | 0.0  | 0.0        | 0.0   |  10.0       |
+      | Nr | Days | Date             | Paid date     | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late  | Outstanding |
+      |    |      | 01 January 2025  |               | 1000.0          |               |          | 0.0  |           | 0.0   | 0.0   |            |       |             |
+      | 1  | 0    | 01 January 2025  | 01 March 2025 | 750.0           | 250.0         | 0.0      | 0.0  | 0.0       | 250.0 | 250.0 | 0.0        | 250.0 | 0.0         |
+      | 2  | 31   | 01 February 2025 | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 3  | 28   | 01 March 2025    | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 4  | 31   | 01 April 2025    | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 5  | 0    | 01 April 2025    |               | 0.0             | 750.0         | 0.0      | 0.0  | 0.0       | 750.0 | 0.0   | 0.0        | 0.0   | 750.0       |
+      | 6  | 32   | 03 May 2025      |               | 0.0             | 125.0         | 0.0      | 0.0  | 0.0       | 125.0 | 0.0   | 0.0        | 0.0   | 125.0       |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
       | 1125.0        | 0.0      | 0.0  | 0.0       | 1125.0 | 250.0 | 0.0        | 250.0| 875.0      |
@@ -1436,7 +1436,7 @@ Feature: LoanReAging
       | 01 January 2025  | Disbursement      | 1000.0 | 0.0       | 0.0      | 0.0  | 0.0       | 1000.0       | false    |
       | 01 March 2025    | Repayment         | 250.0  | 250.0     | 0.0      | 0.0  | 0.0       |  750.0       | false    |
       | 03 May 2025      | Chargeback        | 125.0  | 125.0     | 0.0      | 0.0  | 0.0       |  875.0       | false    |
-      | 03 May 2025      | Re-age            | 875.0  | 875.0     | 0.0      | 0.0  | 0.0       |    0.0       | false    |
+      | 03 May 2025      | Re-age            | 750.0  | 750.0     | 0.0      | 0.0  | 0.0       |    0.0       | false    |
 
   @TestRailId:C4048 @AdvancedPaymentAllocation
   Scenario: Verify that Loan re-aging transaction with repayment, chargeback and charge - N+1 installment after maturity date prior to re-aging - UC5
@@ -1489,14 +1489,14 @@ Feature: LoanReAging
       | frequencyNumber | frequencyType | startDate     | numberOfInstallments |
       | 1               | WEEKS        | 01 April 2025  | 1                    |
     Then Loan Repayment schedule has 6 periods, with the following data for periods:
-      | Nr | Days | Date             | Paid date     | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid | In advance | Late  | Outstanding |
-      |    |      | 01 January 2025  |               | 1000.0          |               |          | 0.0  |           |   0.0 | 0.0  |            |       |             |
-      | 1  | 0    | 01 January 2025  | 01 March 2025 |  750.0          | 250.0         | 0.0      | 0.0  | 0.0       | 250.0 |250.0 | 0.0        | 250.0 |   0.0       |
-      | 2  | 31   | 01 February 2025 | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 3  | 28   | 01 March 2025    | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 4  | 31   | 01 April 2025    | 03 May 2025   |  750.0          |   0.0         | 0.0      | 0.0  | 0.0       |   0.0 | 0.0  | 0.0        | 0.0   |   0.0       |
-      | 5  |  0   | 01 April 2025    |               |    0.0          |  750.0        | 0.0      | 0.0  | 0.0       | 750.0 | 0.0  | 0.0        | 0.0   | 750.0       |
-      | 6  | 32   | 03 May 2025      |03 May 2025    |    0.0          |   0.0         | 0.0      | 0.0  | 10.0      |  10.0 | 0.0  | 0.0        | 0.0   |  10.0       |
+      | Nr | Days | Date             | Paid date     | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late  | Outstanding |
+      |    |      | 01 January 2025  |               | 1000.0          |               |          | 0.0  |           | 0.0   | 0.0   |            |       |             |
+      | 1  | 0    | 01 January 2025  | 01 March 2025 | 750.0           | 250.0         | 0.0      | 0.0  | 0.0       | 250.0 | 250.0 | 0.0        | 250.0 | 0.0         |
+      | 2  | 31   | 01 February 2025 | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 3  | 28   | 01 March 2025    | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 4  | 31   | 01 April 2025    | 03 May 2025   | 750.0           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0   | 0.0         |
+      | 5  | 0    | 01 April 2025    |               | 0.0             | 750.0         | 0.0      | 0.0  | 0.0       | 750.0 | 0.0   | 0.0        | 0.0   | 750.0       |
+      | 6  | 32   | 03 May 2025      |               | 0.0             | 125.0         | 0.0      | 0.0  | 10.0      | 135.0 | 0.0   | 0.0        | 0.0   | 135.0       |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
       | 1125.0        | 0.0      | 0.0  | 10.0      | 1135.0 | 250.0 | 0.0        | 250.0| 885.0      |
@@ -1505,7 +1505,7 @@ Feature: LoanReAging
       | 01 January 2025  | Disbursement      | 1000.0 | 0.0       | 0.0      | 0.0  | 0.0       | 1000.0       | false    |
       | 01 March 2025    | Repayment         | 250.0  | 250.0     | 0.0      | 0.0  | 0.0       |  750.0       | false    |
       | 03 May 2025      | Chargeback        | 125.0  | 125.0     | 0.0      | 0.0  | 0.0       |  875.0       | false    |
-      | 03 May 2025      | Re-age            | 875.0  | 875.0     | 0.0      | 0.0  | 0.0       |    0.0       | false    |
+      | 03 May 2025      | Re-age            | 750.0  | 750.0     | 0.0      | 0.0  | 0.0       |    0.0       | false    |
     Then Loan Charges tab has the following data:
       | Name    | isPenalty | Payment due at       | Due as of   | Calculation type | Due  | Paid | Waived | Outstanding |
       | NSF fee | true      | Specified due date   | 03 May 2025 | Flat             | 10.0 | 0.0  | 0.0    | 10.0        |
