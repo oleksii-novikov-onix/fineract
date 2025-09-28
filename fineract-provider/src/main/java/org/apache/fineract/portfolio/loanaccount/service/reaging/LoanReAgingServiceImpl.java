@@ -51,6 +51,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.Loa
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.TransactionCtx;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
 import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
@@ -112,6 +113,26 @@ public class LoanReAgingServiceImpl {
                 .withGroupId(loan.getGroupId()) //
                 .withLoanId(command.getLoanId()) //
                 .with(changes).build();
+    }
+
+    @Transactional(readOnly = true)
+    public LoanScheduleData previewReAge(Long loanId, JsonCommand command) {
+        Loan loan = loanAssembler.assembleFrom(loanId);
+        reAgingValidator.validateReAge(loan, command);
+
+        LoanTransaction reAgeTransaction = createReAgeTransaction(loan, command);
+        LoanReAgeParameter reAgeParameter = createReAgeParameter(reAgeTransaction, command);
+        reAgeTransaction.setLoanReAgeParameter(reAgeParameter);
+
+        final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = loanRepaymentScheduleTransactionProcessorFactory
+                .determineProcessor(loan.transactionProcessingStrategy());
+
+        loanRepaymentScheduleTransactionProcessor.processLatestTransaction(reAgeTransaction, new TransactionCtx(loan.getCurrency(),
+                loan.getRepaymentScheduleInstallments(), loan.getActiveCharges(), new MoneyHolder(loan.getTotalOverpaidAsMoney()), null));
+
+        loan.updateLoanScheduleDependentDerivedFields();
+
+        return new LoanScheduleData();
     }
 
     public CommandProcessingResult undoReAge(Long loanId, JsonCommand command) {
