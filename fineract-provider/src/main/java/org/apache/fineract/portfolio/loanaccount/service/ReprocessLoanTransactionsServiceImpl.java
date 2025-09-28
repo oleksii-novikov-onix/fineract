@@ -39,6 +39,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleProcessingWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionComparator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
@@ -85,6 +86,16 @@ public class ReprocessLoanTransactionsServiceImpl implements ReprocessLoanTransa
         final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
         final ChangedTransactionDetail changedTransactionDetail = reprocessTransactionsAndFetchChangedTransactions(loan, transactions);
         handleChangedDetail(changedTransactionDetail);
+    }
+
+    @Override
+    public void reprocessTransactionsWithoutChecks(final Loan loan, final LocalDate transactionDate,
+            final List<LoanTransaction> newTransactions) {
+        final List<LoanTransaction> transactions = loanTransactionRepository.findNonReversedTransactionsForReprocessingByLoan(loan);
+        transactions.addAll(newTransactions);
+        transactions.sort(LoanTransactionComparator.INSTANCE);
+        loanTransactionProcessingService.reprocessLoanTransactions(loan.getTransactionProcessingStrategyCode(), loan.getDisbursementDate(),
+                transactions, loan.getCurrency(), loan.getRepaymentScheduleInstallments(), loan.getActiveCharges());
     }
 
     @Override

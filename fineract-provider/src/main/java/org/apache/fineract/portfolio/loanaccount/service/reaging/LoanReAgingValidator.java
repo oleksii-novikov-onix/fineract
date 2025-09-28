@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
@@ -33,8 +34,10 @@ import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.serialization.JsonParserHelper;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.api.LoanReAgingApiConstants;
+import org.apache.fineract.portfolio.loanaccount.api.ReAgePreviewQueryParams;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
@@ -56,6 +59,12 @@ public class LoanReAgingValidator {
         validateReAgeRequest(loan, command);
         validateReAgeBusinessRules(loan);
         validateReAgeOutstandingBalance(loan, command);
+    }
+
+    public void validateReAge(final Loan loan, final ReAgePreviewQueryParams queryParams) {
+        validateReAgeRequest(loan, queryParams);
+        validateReAgeBusinessRules(loan);
+        validateReAgeOutstandingBalance(loan, queryParams);
     }
 
     private void validateReAgeRequest(Loan loan, JsonCommand command) {
@@ -146,7 +155,7 @@ public class LoanReAgingValidator {
         }
     }
 
-    public void validateUndoReAge(Loan loan, JsonCommand command) {
+    public void validateUndoReAge(Loan loan) {
         validateUndoReAgeBusinessRules(loan);
     }
 
@@ -182,6 +191,52 @@ public class LoanReAgingValidator {
     private void validateReAgeOutstandingBalance(final Loan loan, final JsonCommand command) {
         final LocalDate businessDate = getBusinessLocalDate();
         final LocalDate startDate = command.dateValueOfParameterNamed(LoanReAgingApiConstants.startDate);
+
+        final boolean isBackdated = businessDate.isAfter(startDate);
+        if (isBackdated) {
+            return;
+        }
+
+        if (loan.getSummary().getTotalPrincipalOutstanding().compareTo(java.math.BigDecimal.ZERO) == 0) {
+            throw new GeneralPlatformDomainRuleException("error.msg.loan.reage.no.outstanding.balance.to.reage",
+                    "Loan cannot be re-aged as there are no outstanding balances to be re-aged", loan.getId());
+        }
+    }
+
+    private void validateReAgeRequest(final Loan loan, final ReAgePreviewQueryParams queryParams) {
+        List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan.reAge");
+
+        Locale locale = queryParams.getLocale() != null ? Locale.forLanguageTag(queryParams.getLocale()) : Locale.getDefault();
+        LocalDate startDate = JsonParserHelper.convertFrom(queryParams.getStartDate(), LoanReAgingApiConstants.startDate,
+                queryParams.getDateFormat(), locale);
+        if (loan.isProgressiveSchedule()) {
+            baseDataValidator.reset().parameter(LoanReAgingApiConstants.startDate).value(startDate).notNull()
+                    .validateDateAfterOrEqual(loan.getDisbursementDate());
+        } else {
+            baseDataValidator.reset().parameter(LoanReAgingApiConstants.startDate).value(startDate).notNull()
+                    .validateDateAfter(loan.getMaturityDate());
+        }
+
+        String frequencyType = queryParams.getFrequencyType();
+        baseDataValidator.reset().parameter(LoanReAgingApiConstants.frequencyType).value(frequencyType).notNull();
+
+        Integer frequencyNumber = queryParams.getFrequencyNumber();
+        baseDataValidator.reset().parameter(LoanReAgingApiConstants.frequencyNumber).value(frequencyNumber).notNull()
+                .integerGreaterThanZero();
+
+        Integer numberOfInstallments = queryParams.getNumberOfInstallments();
+        baseDataValidator.reset().parameter(LoanReAgingApiConstants.numberOfInstallments).value(numberOfInstallments).notNull()
+                .integerGreaterThanZero();
+
+        throwExceptionIfValidationErrorsExist(dataValidationErrors);
+    }
+
+    private void validateReAgeOutstandingBalance(final Loan loan, final ReAgePreviewQueryParams queryParams) {
+        final LocalDate businessDate = getBusinessLocalDate();
+        Locale locale = queryParams.getLocale() != null ? Locale.forLanguageTag(queryParams.getLocale()) : Locale.getDefault();
+        final LocalDate startDate = JsonParserHelper.convertFrom(queryParams.getStartDate(), LoanReAgingApiConstants.startDate,
+                queryParams.getDateFormat(), locale);
 
         final boolean isBackdated = businessDate.isAfter(startDate);
         if (isBackdated) {
