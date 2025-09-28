@@ -22,6 +22,7 @@ import static java.math.BigDecimal.ZERO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,13 +38,17 @@ import org.apache.fineract.infrastructure.event.business.domain.loan.reaging.Loa
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.reaging.LoanReAgeTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.reaging.LoanUndoReAgeTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.loanaccount.api.LoanReAgingApiConstants;
+import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
+import org.apache.fineract.portfolio.loanaccount.data.RepaymentScheduleRelatedLoanData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepaymentPeriodData;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.domain.reaging.LoanReAgeParameter;
@@ -52,8 +57,11 @@ import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.Mon
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.TransactionCtx;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleData;
+import org.apache.fineract.portfolio.loanaccount.repository.LoanCapitalizedIncomeBalanceRepository;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
+import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanRepaymentScheduleService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.apache.fineract.portfolio.loanaccount.service.ReprocessLoanTransactionsService;
@@ -78,6 +86,9 @@ public class LoanReAgingServiceImpl {
     private final LoanUtilService loanUtilService;
     private final LoanScheduleService loanScheduleService;
     private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
+    private final LoanRepaymentScheduleService loanRepaymentScheduleService;
+    private final LoanReadPlatformService loanReadPlatformService;
+    private final LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository;
 
     public CommandProcessingResult reAge(Long loanId, JsonCommand command) {
         Loan loan = loanAssembler.assembleFrom(loanId);
@@ -132,7 +143,19 @@ public class LoanReAgingServiceImpl {
 
         loan.updateLoanScheduleDependentDerivedFields();
 
-        return new LoanScheduleData();
+        CurrencyData currencyData = new CurrencyData(loan.getCurrencyCode(), null, loan.getCurrency().getDigitsAfterDecimal(),
+                loan.getCurrency().getInMultiplesOf(), null, null);
+
+        RepaymentScheduleRelatedLoanData repaymentScheduleRelatedLoanData = new RepaymentScheduleRelatedLoanData(loan.getDisbursementDate(),
+                loan.getDisbursementDate(), currencyData, loan.getPrincipal().getAmount(), loan.getInArrearsTolerance().getAmount(), ZERO);
+
+        Collection<DisbursementData> disbursementData = loanReadPlatformService.retrieveLoanDisbursementDetails(loanId);
+        Collection<LoanTransactionRepaymentPeriodData> capitalizedIncomeData = loanCapitalizedIncomeBalanceRepository
+                .findRepaymentPeriodDataByLoanId(loanId);
+
+        return loanRepaymentScheduleService.extractLoanScheduleData(loan.getRepaymentScheduleInstallments(),
+                repaymentScheduleRelatedLoanData, disbursementData, capitalizedIncomeData, loan.isInterestRecalculationEnabled(),
+                loan.getLoanProductRelatedDetail().getLoanScheduleType());
     }
 
     public CommandProcessingResult undoReAge(Long loanId, JsonCommand command) {
