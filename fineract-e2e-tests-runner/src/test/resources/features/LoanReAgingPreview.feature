@@ -1,6 +1,7 @@
 @LoanReAgingPreviewFeature
 Feature: LoanReAgingPreview
 
+  @TestRailId:C4098
   Scenario: Basic verification of the loan re-aging preview schedule
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -47,6 +48,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid | In advance | Late | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 0.0       | 1000.0 | 0.0  | 0.0        | 0.0  | 1000.0      |
 
+    When Loan Pay-off is made on "15 April 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4099
   Scenario: Verify Loan re-aging preview with chargeback
     When Admin sets the business date to "01 January 2024"
     When Admin creates a client with random data
@@ -108,6 +113,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
       | 1125.0        | 0.0      | 0.0  | 0.0       | 1125.0 | 250.0 | 0.0        | 0.0  | 875.0       |
 
+    When Loan Pay-off is made on "02 February 2024"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4100
   Scenario: Verify Loan re-aging preview with charge N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -155,6 +164,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid | In advance | Late | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 10.0      | 1010.0 | 0.0  | 0.0        | 0.0  | 1010.0      |
 
+    When Loan Pay-off is made on "03 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4101
   Scenario: Verify Loan re-aging preview with backdated repayment, charge and N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -203,6 +216,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late  | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 10.0      | 1010.0 | 250.0 | 0.0        | 250.0 | 760.0       |
 
+    When Loan Pay-off is made on "03 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4102
   Scenario: Verify Loan re-aging preview with downpayment, payoff and charge - N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -252,6 +269,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid   | In advance | Late  | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 10.0      | 1010.0 | 1000.0 | 0.0        | 750.0 | 10.0        |
 
+    When Loan Pay-off is made on "20 March 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4103
   Scenario: Verify that Loan re-aging preview with repayment, chargeback and charge - N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -301,6 +322,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late  | Outstanding |
       | 1125.0        | 0.0      | 0.0  | 10.0      | 1135.0 | 250.0 | 0.0        | 250.0 | 885.0       |
 
+    When Loan Pay-off is made on "03 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4104
   Scenario: Verify that Loan re-aging preview with repayment, charge and charge adjustment - N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -351,6 +376,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late  | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 20.0      | 1020.0 | 270.0 | 0.0        | 270.0 | 750.0       |
 
+    When Loan Pay-off is made on "04 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4105
   Scenario: Verify that Loan re-aging transaction with MIR and charge - N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -399,6 +428,10 @@ Feature: LoanReAgingPreview
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late  | Outstanding |
       | 1000.0        | 0.0      | 0.0  | 20.0      | 1020.0 | 100.0 | 0.0        | 100.0 | 920.0       |
 
+    When Loan Pay-off is made on "03 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+
+  @TestRailId:C4106
   Scenario: Verify that Loan re-aging preview with 2nd disbursement and charge - N+1 installment after maturity date
     When Admin sets the business date to "01 January 2025"
     When Admin creates a client with random data
@@ -452,3 +485,6 @@ Feature: LoanReAgingPreview
     And Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due   | Paid | In advance | Late | Outstanding |
       | 600.0         | 0.0      | 0.0  | 20.0      | 620.0 | 0.0  | 0.0        | 0.0  | 620.0       |
+
+    When Loan Pay-off is made on "01 May 2025"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
