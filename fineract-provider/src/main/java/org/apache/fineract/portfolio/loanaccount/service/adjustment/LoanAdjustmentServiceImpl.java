@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.loanaccount.service.adjustment;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -100,6 +101,7 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
     private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
     private final LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository;
     private final LoanBuyDownFeeBalanceRepository loanBuyDownFeeBalanceRepository;
+    private final EntityManager entityManager;
 
     @Override
     public CommandProcessingResult adjustLoanTransaction(Loan loan, LoanTransaction transactionToAdjust, LoanAdjustmentParameter parameter,
@@ -360,7 +362,11 @@ public class LoanAdjustmentServiceImpl implements LoanAdjustmentService {
          */
         try {
             loanRepaymentScheduleInstallmentRepository.saveAll(loan.getRepaymentScheduleInstallments());
-            return this.loanRepositoryWrapper.saveAndFlush(loan);
+            entityManager.flush();
+            if (entityManager.contains(loan)) {
+                entityManager.refresh(loan);
+            }
+            return loan;
         } catch (final JpaSystemException | DataIntegrityViolationException e) {
             final Throwable realCause = e.getCause();
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
