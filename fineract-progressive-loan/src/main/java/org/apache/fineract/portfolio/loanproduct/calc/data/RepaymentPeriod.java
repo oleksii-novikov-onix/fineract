@@ -44,8 +44,9 @@ public class RepaymentPeriod {
 
     @JsonExclude
     private final RepaymentPeriod previous;
+    @Setter
     @Getter
-    private final LocalDate fromDate;
+    private LocalDate fromDate;
     @Setter
     @Getter
     private LocalDate dueDate;

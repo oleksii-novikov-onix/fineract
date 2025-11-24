@@ -106,11 +106,8 @@ public class ProgressiveLoanScheduleGenerator implements LoanScheduleGenerator {
         // generate list of proposed schedule due dates
         final List<LoanScheduleModelRepaymentPeriod> expectedRepaymentPeriods = scheduledDateGenerator.generateRepaymentPeriods(mc,
                 periodStartDate, loanApplicationTerms, holidayDetailDTO);
-        List<LoanTermVariationsData> loanTermVariations = loanApplicationTerms.getLoanTermVariations() != null
-                ? loanApplicationTerms.getLoanTermVariations().getExceptionData()
-                : null;
         final ProgressiveLoanInterestScheduleModel interestScheduleModel = emiCalculator.generatePeriodInterestScheduleModel(
-                expectedRepaymentPeriods, loanApplicationTerms.toLoanConfigurationDetails(), loanTermVariations,
+                expectedRepaymentPeriods, loanApplicationTerms.toLoanConfigurationDetails(),
                 loanApplicationTerms.getInstallmentAmountInMultiplesOf(), mc);
         final List<LoanScheduleModelPeriod> periods = new ArrayList<>(expectedRepaymentPeriods.size());
 

@@ -225,7 +225,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                 .collect(Collectors.toCollection(ArrayList::new));
         final Integer installmentAmountInMultiplesOf = loan.getLoanProductRelatedDetail().getInstallmentAmountInMultiplesOf();
         ProgressiveLoanInterestScheduleModel scheduleModel = emiCalculator.generateInstallmentInterestScheduleModel(installments,
-                LoanConfigurationDetailsMapper.map(loan), loanTermVariations, installmentAmountInMultiplesOf,
+                LoanConfigurationDetailsMapper.map(loan), installmentAmountInMultiplesOf,
                 overpaymentHolder.getMoneyObject().getMc());
         ProgressiveTransactionCtx ctx = new ProgressiveTransactionCtx(currency, installments, charges, overpaymentHolder,
                 changedTransactionDetail, scheduleModel);
@@ -236,8 +236,8 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
         List<LoanTransaction> overpaidTransactions = new ArrayList<>();
         for (final ChangeOperation changeOperation : changeOperations) {
             if (changeOperation.isLoanTermVariationsData()) {
-                final LoanTermVariationsData interestRateChange = changeOperation.getLoanTermVariationsData().get();
-                processLoanTermVariation(installments, interestRateChange, scheduleModel);
+                final LoanTermVariationsData termVariationsData = changeOperation.getLoanTermVariationsData().get();
+                processLoanTermVariation(installments, termVariationsData, scheduleModel);
             } else if (changeOperation.isTransaction()) {
                 LoanTransaction transaction = changeOperation.getLoanTransaction().get();
                 if (loan.getStatus().isOverpaid() && transaction.isAccrualActivity()) {
@@ -309,8 +309,18 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             case INTEREST_PAUSE -> handleInterestPause(installments, termVariationsData, scheduleModel);
             case INTEREST_RATE_FROM_INSTALLMENT -> handleChangeInterestRate(installments, termVariationsData, scheduleModel);
             case EXTEND_REPAYMENT_PERIOD -> handleExtraRepaymentPeriod(installments, termVariationsData, scheduleModel);
+            case DUE_DATE -> handleDueDateChangeOnRepaymentPeriod(installments, termVariationsData, scheduleModel);
             default -> throw new IllegalStateException("Unhandled LoanTermVariationType.");
         }
+    }
+
+    private void handleDueDateChangeOnRepaymentPeriod(List<LoanRepaymentScheduleInstallment> installments, LoanTermVariationsData termVariationsData, ProgressiveLoanInterestScheduleModel scheduleModel) {
+        final LocalDate targetRepaymentPeriodDueDate = termVariationsData.getTermVariationApplicableFrom();
+        final LocalDate newDueDate = termVariationsData.getDateValue();
+        final LoanProductRelatedDetail loanProductRelatedDetail = installments.get(0).getLoan().getLoanProductRelatedDetail();
+        LoanApplicationTerms loanApplicationTerms = new LoanApplicationTerms.Builder().repaymentEvery(loanProductRelatedDetail.getRepayEvery()).repaymentPeriodFrequencyType(loanProductRelatedDetail.getRepaymentPeriodFrequencyType()).seedDate(newDueDate).build();
+        emiCalculator.changeDueDate(scheduleModel, loanApplicationTerms, targetRepaymentPeriodDueDate, newDueDate);
+        //TODO: Based on the scheduleModel repaymentPeriod from and due dates, update the repayment period installment (entity) from and due dates + emi + due principal + due interest
     }
 
     private void handleExtraRepaymentPeriod(final List<LoanRepaymentScheduleInstallment> installments,
@@ -1263,7 +1273,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                 .collect(Collectors.groupingBy(ltvd -> LoanTermVariationType.fromInt(ltvd.getTermType().getId().intValue())));
 
         Stream.of(LoanTermVariationType.INTEREST_RATE_FROM_INSTALLMENT, LoanTermVariationType.INTEREST_PAUSE,
-                LoanTermVariationType.EXTEND_REPAYMENT_PERIOD).forEach(key -> {
+                LoanTermVariationType.EXTEND_REPAYMENT_PERIOD, LoanTermVariationType.DUE_DATE).forEach(key -> {
                     if (loanTermVariationsMap.get(key) != null) {
                         changeOperations.addAll(loanTermVariationsMap.get(key).stream().map(ChangeOperation::new).toList());
                     }
