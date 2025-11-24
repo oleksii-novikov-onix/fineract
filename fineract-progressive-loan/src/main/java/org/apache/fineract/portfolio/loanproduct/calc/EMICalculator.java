@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.reaging.LoanReAgeParameter;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplicationTerms;
@@ -46,8 +45,7 @@ public interface EMICalculator {
      */
     @NotNull
     ProgressiveLoanInterestScheduleModel generatePeriodInterestScheduleModel(@NotNull List<LoanScheduleModelRepaymentPeriod> periods,
-            @NotNull ILoanConfigurationDetails loanProductRelatedDetail,
-            Integer installmentAmountInMultiplesOf, MathContext mc);
+            @NotNull ILoanConfigurationDetails loanProductRelatedDetail, Integer installmentAmountInMultiplesOf, MathContext mc);
 
     /**
      * This method creates an Interest model with repayment periods from the installments which retrieved from the
@@ -169,5 +167,6 @@ public interface EMICalculator {
             Money sumOfOtherEqualAmortizationValues, Integer numberOfInstallments, Integer installmentAmountInMultiplesOf,
             MonetaryCurrency currency);
 
-    void changeDueDate(ProgressiveLoanInterestScheduleModel scheduleModel,LoanApplicationTerms loanApplicationTerms, LocalDate targetRepaymentPeriodDueDate, LocalDate newDueDate);
+    void changeDueDate(ProgressiveLoanInterestScheduleModel scheduleModel, LoanApplicationTerms loanApplicationTerms,
+            LocalDate targetRepaymentPeriodDueDate, LocalDate newDueDate);
 }

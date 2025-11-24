@@ -422,8 +422,17 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
                     .determineProcessor(loan.transactionProcessingStrategy());
             final LoanScheduleGenerator loanScheduleGenerator = this.loanScheduleFactory.create(loanApplicationTerms.getLoanScheduleType(),
                     loanApplicationTerms.getInterestMethod());
+
+            if (loan.isProgressiveSchedule()) {
+                loanApplicationTerms.setInRescheduleContext(true);
+            }
+
             final LoanScheduleDTO loanScheduleDTO = loanScheduleGenerator.rescheduleNextInstallments(mathContext, loanApplicationTerms,
                     loan, loanApplicationTerms.getHolidayDetailDTO(), loanRepaymentScheduleTransactionProcessor, rescheduleFromDate);
+
+            if (loan.isProgressiveSchedule()) {
+                loanApplicationTerms.setInRescheduleContext(false);
+            }
 
             // Either the installments got recalculated or the model
             if (loanScheduleDTO.getInstallments() != null) {

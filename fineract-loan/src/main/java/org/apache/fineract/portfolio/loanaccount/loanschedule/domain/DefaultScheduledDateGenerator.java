@@ -76,6 +76,11 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     private LocalDate applyLoanTermVariations(final LoanApplicationTerms loanApplicationTerms, final LocalDate scheduledDueDate) {
         LocalDate modifiedScheduledDueDate = scheduledDueDate;
+
+        if (loanApplicationTerms.isInRescheduleContext()) {
+            return modifiedScheduledDueDate;
+        }
+
         // due date changes should be applied only for that dueDate
         if (loanApplicationTerms.getLoanTermVariations() != null) {
             if (loanApplicationTerms.getLoanTermVariations().hasDueDateVariation(scheduledDueDate)) {

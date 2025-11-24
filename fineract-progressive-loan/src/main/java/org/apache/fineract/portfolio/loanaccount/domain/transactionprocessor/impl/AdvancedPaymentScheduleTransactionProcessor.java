@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -225,8 +226,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                 .collect(Collectors.toCollection(ArrayList::new));
         final Integer installmentAmountInMultiplesOf = loan.getLoanProductRelatedDetail().getInstallmentAmountInMultiplesOf();
         ProgressiveLoanInterestScheduleModel scheduleModel = emiCalculator.generateInstallmentInterestScheduleModel(installments,
-                LoanConfigurationDetailsMapper.map(loan), installmentAmountInMultiplesOf,
-                overpaymentHolder.getMoneyObject().getMc());
+                LoanConfigurationDetailsMapper.map(loan), installmentAmountInMultiplesOf, overpaymentHolder.getMoneyObject().getMc());
         ProgressiveTransactionCtx ctx = new ProgressiveTransactionCtx(currency, installments, charges, overpaymentHolder,
                 changedTransactionDetail, scheduleModel);
 
@@ -314,13 +314,32 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
         }
     }
 
-    private void handleDueDateChangeOnRepaymentPeriod(List<LoanRepaymentScheduleInstallment> installments, LoanTermVariationsData termVariationsData, ProgressiveLoanInterestScheduleModel scheduleModel) {
+    private void handleDueDateChangeOnRepaymentPeriod(List<LoanRepaymentScheduleInstallment> installments,
+            LoanTermVariationsData termVariationsData, ProgressiveLoanInterestScheduleModel scheduleModel) {
         final LocalDate targetRepaymentPeriodDueDate = termVariationsData.getTermVariationApplicableFrom();
         final LocalDate newDueDate = termVariationsData.getDateValue();
         final LoanProductRelatedDetail loanProductRelatedDetail = installments.get(0).getLoan().getLoanProductRelatedDetail();
-        LoanApplicationTerms loanApplicationTerms = new LoanApplicationTerms.Builder().repaymentEvery(loanProductRelatedDetail.getRepayEvery()).repaymentPeriodFrequencyType(loanProductRelatedDetail.getRepaymentPeriodFrequencyType()).seedDate(newDueDate).build();
+        LoanApplicationTerms loanApplicationTerms = new LoanApplicationTerms.Builder()
+                .currency(installments.get(0).getLoan().getCurrency().toData()).repaymentEvery(loanProductRelatedDetail.getRepayEvery())
+                .repaymentPeriodFrequencyType(loanProductRelatedDetail.getRepaymentPeriodFrequencyType()).seedDate(newDueDate).build();
         emiCalculator.changeDueDate(scheduleModel, loanApplicationTerms, targetRepaymentPeriodDueDate, newDueDate);
-        //TODO: Based on the scheduleModel repaymentPeriod from and due dates, update the repayment period installment (entity) from and due dates + emi + due principal + due interest
+
+        // Find the target installment index and update it along with all subsequent installments
+        IntStream.range(0, installments.size()).filter(i -> installments.get(i).getDueDate().equals(targetRepaymentPeriodDueDate))
+                .findFirst()
+                .ifPresent(targetInstallmentIndex -> IntStream
+                        .range(targetInstallmentIndex, Math.min(installments.size(), scheduleModel.repaymentPeriods().size()))
+                        .forEach(i -> {
+                            final LoanRepaymentScheduleInstallment installment = installments.get(i);
+                            final RepaymentPeriod repaymentPeriod = scheduleModel.repaymentPeriods().get(i);
+
+                            if (isNotObligationsMet(installment)) {
+                                installment.updateFromDate(repaymentPeriod.getFromDate());
+                                installment.updateDueDate(repaymentPeriod.getDueDate());
+                                installment.updatePrincipal(repaymentPeriod.getDuePrincipal().getAmount());
+                                installment.updateInterestCharged(repaymentPeriod.getDueInterest().getAmount());
+                            }
+                        }));
     }
 
     private void handleExtraRepaymentPeriod(final List<LoanRepaymentScheduleInstallment> installments,

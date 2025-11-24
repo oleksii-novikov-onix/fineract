@@ -40,7 +40,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Setter;
@@ -49,8 +48,6 @@ import org.apache.fineract.infrastructure.core.serialization.gson.JsonExclude;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanTermVariationType;
 import org.apache.fineract.portfolio.loanproduct.domain.ILoanConfigurationDetails;
 
 @Data
@@ -73,8 +70,7 @@ public class ProgressiveLoanInterestScheduleModel {
     private LocalDate lastOverdueBalanceChange;
 
     public ProgressiveLoanInterestScheduleModel(final List<RepaymentPeriod> repaymentPeriods,
-            final ILoanConfigurationDetails loanProductRelatedDetail,
-            final Integer installmentAmountInMultiplesOf, final MathContext mc) {
+            final ILoanConfigurationDetails loanProductRelatedDetail, final Integer installmentAmountInMultiplesOf, final MathContext mc) {
         this.repaymentPeriods = new ArrayList<>(repaymentPeriods);
         this.interestRates = new TreeSet<>(Collections.reverseOrder());
         this.loanProductRelatedDetail = loanProductRelatedDetail;
@@ -86,8 +82,8 @@ public class ProgressiveLoanInterestScheduleModel {
     }
 
     private ProgressiveLoanInterestScheduleModel(final List<RepaymentPeriod> repaymentPeriods, final TreeSet<InterestRate> interestRates,
-            final ILoanConfigurationDetails loanProductRelatedDetail, final Integer installmentAmountInMultiplesOf,
-            final MathContext mc, final boolean isCopiedForCalculation) {
+            final ILoanConfigurationDetails loanProductRelatedDetail, final Integer installmentAmountInMultiplesOf, final MathContext mc,
+            final boolean isCopiedForCalculation) {
         this.mc = mc;
         this.repaymentPeriods = copyRepaymentPeriods(repaymentPeriods,
                 (previousPeriod, repaymentPeriod) -> RepaymentPeriod.copy(previousPeriod, repaymentPeriod, mc));

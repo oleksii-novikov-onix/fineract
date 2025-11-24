@@ -167,14 +167,4 @@ public class LoanTermVariationsDataWrapper {
         this.dueDateIterator = this.dueDateVariation.listIterator();
     }
 
-    public List<LoanTermVariationsData> getAllLoanTermVariations() {
-        List<LoanTermVariationsData> allTermVariations = new ArrayList<>();
-        allTermVariations.addAll(exceptionData);
-        allTermVariations.addAll(interestRateChanges);
-        allTermVariations.addAll(dueDateVariation);
-        allTermVariations.addAll(interestRateFromInstallment);
-        allTermVariations.addAll(interestPauseVariations);
-        return  allTermVariations;
-    }
-
 }

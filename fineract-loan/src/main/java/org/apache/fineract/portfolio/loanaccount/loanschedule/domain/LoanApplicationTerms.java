@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -247,6 +249,9 @@ public final class LoanApplicationTerms {
     private LoanBuyDownFeeStrategy buyDownFeeStrategy;
     private LoanBuyDownFeeIncomeType buyDownFeeIncomeType;
     private boolean merchantBuyDownFee;
+    @Getter
+    @Setter
+    private boolean inRescheduleContext;
 
     private LoanApplicationTerms(Builder builder) {
         this.currency = builder.currency;

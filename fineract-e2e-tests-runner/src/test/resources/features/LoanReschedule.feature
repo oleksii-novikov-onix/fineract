@@ -1174,19 +1174,14 @@ Feature: LoanReschedule
       | 30 November 2025   | 10 November 2025 | 31 January 2026 |                  |                 |            |                 |
     Then In Loan Transactions the "1"th Transaction of "Accrual Activity" on "31 October 2025" has "1" relationship with type="REPLAYED"
 
-  @TestRailId:temp
-  Scenario: temp
-#  // Step 1: Update Business date to 2025/09/05
+  Scenario: Verify progressive loan due date reschedule maintains EMI
     When Admin sets the business date to "05 September 2025"
     And Admin creates a client with random data
-#  // Step 2: Create a loan for backbook. Term: 24M, interest 24.99 Disburse with amount 1111 on 2024-12-31
     And Admin creates a fully customized loan with the following data:
-      | LoanProduct                                                   | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
-      | LP2_ADV_PYMNT_INTEREST_DAILY_EMI_ACTUAL_ACTUAL_ACCRUAL_ACTIVITY | 31 December 2024   | 1111            | 24.99                      | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 24                 | MONTHS                | 1              | MONTHS                 | 24                  | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
+      | LoanProduct                                                     | submitted on date | with Principal | ANNUAL interest rate % | interest type     | interest calculation period | amortization type  | loanTermFrequency | loanTermFrequencyType | repaymentEvery | repaymentFrequencyType | numberOfRepayments | graceOnPrincipalPayment | graceOnInterestPayment | interest free period | Payment strategy            |
+      | LP2_ADV_PYMNT_INTEREST_DAILY_EMI_ACTUAL_ACTUAL_ACCRUAL_ACTIVITY | 31 December 2024  | 1111           | 24.99                  | DECLINING_BALANCE | DAILY                       | EQUAL_INSTALLMENTS | 24                | MONTHS                | 1              | MONTHS                 | 24                 | 0                       | 0                      | 0                    | ADVANCED_PAYMENT_ALLOCATION |
     And Admin successfully approves the loan on "31 December 2024" with "1111" amount and expected disbursement date on "31 December 2024"
     And Admin successfully disburse the loan on "31 December 2024" with "1111" EUR transaction amount
-#  // Step 3: Setup autopay for this loan (This can be optional if creating autopay payments manually)
-#  // Step 4: Repayments for 59.26 on 2025-01-31, 2025-02-28, 2025-03-31, 2025-04-30, 2025-05-30, 2025-06-29, 2025-07-31, 2025-08-31
     And Customer makes "AUTOPAY" repayment on "31 January 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "28 February 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "31 March 2025" with 59.26 EUR transaction amount
@@ -1195,35 +1190,78 @@ Feature: LoanReschedule
     And Customer makes "AUTOPAY" repayment on "29 June 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "31 July 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "31 August 2025" with 59.26 EUR transaction amount
-#  // Step 5: Update business date to next day (2025-09-06)
     When Admin sets the business date to "06 September 2025"
-#  // Step 6: Run Inline COB for this loan
     When Admin runs inline COB job for Loan
-#  // Step 7: Reverse the 2025-08-31 repayment on 2025-09-11
     When Admin sets the business date to "11 September 2025"
     When Customer undo "1"th "Repayment" transaction made on "31 August 2025"
-#  // Step 8: Change date to 2025-09-30
     When Admin sets the business date to "30 September 2025"
-#  // Step 9: Run Inline COB (Create 2 autopays for installment amount 59.26 at this time)
     And Customer makes "AUTOPAY" repayment on "30 September 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "30 September 2025" with 59.26 EUR transaction amount
     When Admin runs inline COB job for Loan
-#  // Step 10: Reverse above 2 9/30 repayments on 10/10
     When Admin sets the business date to "10 October 2025"
     When Customer undo "1"th "Repayment" transaction made on "30 September 2025"
     When Customer undo "2"th "Repayment" transaction made on "30 September 2025"
-#  // Step 11: Repayment of 60 on 2025-10-16
     When Admin sets the business date to "16 October 2025"
     And Customer makes "AUTOPAY" repayment on "16 October 2025" with 60 EUR transaction amount
-#  // Step 12: Change date to 2025-10-31
     When Admin sets the business date to "31 October 2025"
-#  // Step 13: Run Inline COB (Create 2 autopays for amount 59.26 and 58.52 at this time)
     And Customer makes "AUTOPAY" repayment on "31 October 2025" with 59.26 EUR transaction amount
     And Customer makes "AUTOPAY" repayment on "31 October 2025" with 58.52 EUR transaction amount
     When Admin runs inline COB job for Loan
-#  // Step 14: Change date to 2025-11-10. Deploy new code with the reprocess loan bug fix TODO how to do this?
     When Admin sets the business date to "10 November 2025"
-#  // Step 15: Adjust schedule of 2025-11-30 by 2 months
+    Then Loan Repayment schedule has 24 periods, with the following data for periods:
+      | Nr | Days | Date              | Paid date        | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late  | Outstanding |
+      |    |      | 31 December 2024  |                  | 1111.0          |               |          | 0.0  |           | 0.0   | 0.0   |            |       |             |
+      | 1  | 31   | 31 January 2025   | 31 January 2025  | 1075.32         | 35.68         | 23.58    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 2  | 28   | 28 February 2025  | 28 February 2025 | 1036.67         | 38.65         | 20.61    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 3  | 31   | 31 March 2025     | 31 March 2025    | 999.41          | 37.26         | 22.0     | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 4  | 30   | 30 April 2025     | 30 April 2025    | 960.68          | 38.73         | 20.53    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 5  | 31   | 31 May 2025       | 30 May 2025      | 921.81          | 38.87         | 20.39    | 0.0  | 0.0       | 59.26 | 59.26 | 59.26     | 0.0   | 0.0         |
+      | 6  | 30   | 30 June 2025      | 29 June 2025     | 881.48          | 40.33         | 18.93    | 0.0  | 0.0       | 59.26 | 59.26 | 59.26     | 0.0   | 0.0         |
+      | 7  | 31   | 31 July 2025      | 31 July 2025     | 840.93          | 40.55         | 18.71    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 8  | 31   | 31 August 2025    | 16 October 2025  | 799.52          | 41.41         | 17.85    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 59.26 | 0.0         |
+      | 9  | 30   | 30 September 2025 | 31 October 2025  | 756.68          | 42.84         | 16.42    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 59.26 | 0.0         |
+      | 10 | 31   | 31 October 2025   | 31 October 2025  | 713.48          | 43.2          | 16.06    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 11 | 30   | 30 November 2025  |                  | 668.87          | 44.61         | 14.65    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 12 | 31   | 31 December 2025  |                  | 623.81          | 45.06         | 14.2     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 13 | 31   | 31 January 2026   |                  | 577.79          | 46.02         | 13.24    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 14 | 28   | 28 February 2026  |                  | 529.61          | 48.18         | 11.08    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 15 | 31   | 31 March 2026     |                  | 481.59          | 48.02         | 11.24    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 16 | 30   | 30 April 2026     |                  | 432.22          | 49.37         | 9.89     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 17 | 31   | 31 May 2026       |                  | 382.13          | 50.09         | 9.17     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 18 | 30   | 30 June 2026      |                  | 330.72          | 51.41         | 7.85     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 19 | 31   | 31 July 2026      |                  | 278.48          | 52.24         | 7.02     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 20 | 31   | 31 August 2026    |                  | 225.13          | 53.35         | 5.91     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 21 | 30   | 30 September 2026 |                  | 170.49          | 54.64         | 4.62     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 22 | 31   | 31 October 2026   |                  | 114.85          | 55.64         | 3.62     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 23 | 30   | 30 November 2026  |                  | 57.95           | 56.9          | 2.36     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 24 | 31   | 31 December 2026  |                  | 0.0             | 57.95         | 1.23     | 0.0  | 0.0       | 59.18 | 0.0   | 0.0        | 0.0   | 59.18       |
     When Admin creates and approves Loan reschedule with the following data:
       | rescheduleFromDate | submittedOnDate  | adjustedDueDate | graceOnPrincipal | graceOnInterest | extraTerms | newInterestRate |
       | 30 November 2025   | 10 November 2025 | 31 January 2026 |                  |                 |            |                 |
+    Then Loan Repayment schedule has 24 periods, with the following data for periods:
+      | Nr | Days | Date              | Paid date        | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late  | Outstanding |
+      |    |      | 31 December 2024  |                  | 1111.0          |               |          | 0.0  |           | 0.0   | 0.0   |            |       |             |
+      | 1  | 31   | 31 January 2025   | 31 January 2025  | 1075.32         | 35.68         | 23.58    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 2  | 28   | 28 February 2025  | 28 February 2025 | 1036.67         | 38.65         | 20.61    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 3  | 31   | 31 March 2025     | 31 March 2025    | 999.41          | 37.26         | 22.0     | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 4  | 30   | 30 April 2025     | 30 April 2025    | 960.68          | 38.73         | 20.53    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 5  | 31   | 31 May 2025       | 30 May 2025      | 921.81          | 38.87         | 20.39    | 0.0  | 0.0       | 59.26 | 59.26 | 59.26     | 0.0   | 0.0         |
+      | 6  | 30   | 30 June 2025      | 29 June 2025     | 881.48          | 40.33         | 18.93    | 0.0  | 0.0       | 59.26 | 59.26 | 59.26     | 0.0   | 0.0         |
+      | 7  | 31   | 31 July 2025      | 31 July 2025     | 840.93          | 40.55         | 18.71    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 8  | 31   | 31 August 2025    | 16 October 2025  | 799.52          | 41.41         | 17.85    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 59.26 | 0.0         |
+      | 9  | 30   | 30 September 2025 | 31 October 2025  | 756.68          | 42.84         | 16.42    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 59.26 | 0.0         |
+      | 10 | 31   | 31 October 2025   | 31 October 2025  | 713.48          | 43.2          | 16.06    | 0.0  | 0.0       | 59.26 | 59.26 | 0.0        | 0.0   | 0.0         |
+      | 11 | 92   | 31 January 2026   |                  | 668.87          | 44.61         | 14.65    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 12 | 28   | 28 February 2026  |                  | 623.81          | 45.06         | 14.2     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 13 | 31   | 31 March 2026     |                  | 577.79          | 46.02         | 13.24    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 14 | 30   | 30 April 2026     |                  | 529.61          | 48.18         | 11.08    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 15 | 31   | 31 May 2026       |                  | 481.59          | 48.02         | 11.24    | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 16 | 30   | 30 June 2026      |                  | 432.22          | 49.37         | 9.89     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 17 | 31   | 31 July 2026      |                  | 382.13          | 50.09         | 9.17     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 18 | 31   | 31 August 2026    |                  | 330.72          | 51.41         | 7.85     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 19 | 30   | 30 September 2026 |                  | 278.48          | 52.24         | 7.02     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 20 | 31   | 31 October 2026   |                  | 225.13          | 53.35         | 5.91     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 21 | 30   | 30 November 2026  |                  | 170.49          | 54.64         | 4.62     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 22 | 31   | 31 December 2026  |                  | 114.85          | 55.64         | 3.62     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 23 | 31   | 31 January 2027   |                  | 57.95           | 56.9          | 2.36     | 0.0  | 0.0       | 59.26 | 0.0   | 0.0        | 0.0   | 59.26       |
+      | 24 | 28   | 28 February 2027  |                  | 0.0             | 57.95         | 1.23     | 0.0  | 0.0       | 59.18 | 0.0   | 0.0        | 0.0   | 59.18       |
