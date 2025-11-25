@@ -629,15 +629,43 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     public void changeDueDate(ProgressiveLoanInterestScheduleModel scheduleModel, LoanApplicationTerms loanApplicationTerms,
             LocalDate targetRepaymentPeriodDueDate, LocalDate newDueDate) {
         RepaymentPeriod targetRepaymentPeriod = findRepaymentPeriod(scheduleModel, targetRepaymentPeriodDueDate).orElseThrow();
+        final LocalDate changeEffectiveDate = targetRepaymentPeriod.getFromDate();
+
+        // Update repayment period due date
         targetRepaymentPeriod.setDueDate(newDueDate);
+
+        // Update the last interest period's due date to match the repayment period's new due date
+        if (!targetRepaymentPeriod.getInterestPeriods().isEmpty()) {
+            InterestPeriod lastInterestPeriod = targetRepaymentPeriod.getInterestPeriods()
+                    .get(targetRepaymentPeriod.getInterestPeriods().size() - 1);
+            lastInterestPeriod.setDueDate(newDueDate);
+        }
+
+        // Update subsequent repayment periods
         int targetRepaymentPeriodIndex = scheduleModel.repaymentPeriods().indexOf(targetRepaymentPeriod);
         for (int i = targetRepaymentPeriodIndex + 1; i < scheduleModel.repaymentPeriods().size(); ++i) {
             RepaymentPeriod nextRepaymentPeriod = scheduleModel.repaymentPeriods().get(i);
             nextRepaymentPeriod.setFromDate(newDueDate);
             LocalDate nextRepaymentDate = scheduledDateGenerator.generateNextRepaymentDate(newDueDate, loanApplicationTerms, false);
             nextRepaymentPeriod.setDueDate(nextRepaymentDate);
+
+            // Update the first interest period's fromDate and last interest period's dueDate for subsequent periods
+            if (!nextRepaymentPeriod.getInterestPeriods().isEmpty()) {
+                nextRepaymentPeriod.getInterestPeriods().get(0).setFromDate(newDueDate);
+                InterestPeriod lastInterestPeriod = nextRepaymentPeriod.getInterestPeriods()
+                        .get(nextRepaymentPeriod.getInterestPeriods().size() - 1);
+                lastInterestPeriod.setDueDate(nextRepaymentDate);
+            }
+
             newDueDate = nextRepaymentDate;
         }
+
+        // Recalculate rate factors and balances for affected periods (preserve EMI)
+        final List<RepaymentPeriod> relatedRepaymentPeriods = scheduleModel.getRelatedRepaymentPeriods(changeEffectiveDate);
+        calculateRateFactorForPeriods(relatedRepaymentPeriods, scheduleModel);
+        calculateOutstandingBalance(scheduleModel);
+        // Adjust the last period to pay off any remaining balance
+        calculateLastUnpaidRepaymentPeriodEMI(scheduleModel, changeEffectiveDate);
     }
 
     private List<RepaymentPeriod> findPossiblyOverdueRepaymentPeriods(final LocalDate targetDate,
