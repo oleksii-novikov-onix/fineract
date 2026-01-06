@@ -3579,7 +3579,7 @@ Feature: LoanReAmortization
       |    |      | 15 April 2024    |                  | 100.0           |               |          | 0.0  |           | 0.0   | 0.0   |            |      |             |
       | 4  | 30   | 01 May 2024      |                  | 108.95          | 54.28         | 0.68     | 0.0  | 0.0       | 54.96 | 0.0   | 0.0        | 0.0  | 54.96       |
       | 5  | 31   | 01 June 2024     |                  | 54.63           | 54.32         | 0.64     | 0.0  | 0.0       | 54.96 | 0.0   | 0.0        | 0.0  | 54.96       |
-      | 6  | 30   | 01 July 2024     |                  | 0.0             | 54.63         | 0.32     | 0.0  | 0.0       | 54.96 | 0.0   | 0.0        | 0.0  | 54.95       |
+      | 6  | 30   | 01 July 2024     |                  | 0.0             | 54.63         | 0.32     | 0.0  | 0.0       | 54.95 | 0.0   | 0.0        | 0.0  | 54.95       |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
       | 200.0         | 3.2      | 0.0  | 0.0       | 203.2  | 17.01 | 0.0        | 0.0  | 186.19      |
@@ -3589,8 +3589,8 @@ Feature: LoanReAmortization
       | 01 February 2024 | Repayment        | 17.01  | 16.43     | 0.58     | 0.0  | 0.0       | 83.57        | false    | false    |
       | 15 March 2024    | Re-amortize      | 17.01  | 16.52     | 0.49     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 15 April 2024    | Disbursement     | 100.0  | 0.0       | 0.0      | 0.0  | 0.0       | 183.57       | false    | false    |
-#    When Loan Pay-off is made on "15 April 2024"
-#    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+    When Loan Pay-off is made on "15 April 2024"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
 
   @TestRailId:C4413 @AdvancedPaymentAllocation
   Scenario: Verify interest pause after re-amortization - Interest calculation: Default Behavior - UC2

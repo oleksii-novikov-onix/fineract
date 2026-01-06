@@ -793,7 +793,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     private List<RepaymentPeriod> findPossiblyOverdueRepaymentPeriods(final LocalDate targetDate,
             final ProgressiveLoanInterestScheduleModel model) {
         return model.repaymentPeriods().stream() //
-                .filter(repaymentPeriod -> !repaymentPeriod.isReAgedEarlyRepaymentHolder()
+                .filter(repaymentPeriod -> !repaymentPeriod.isReAgedEarlyRepaymentHolder() && !repaymentPeriod.isReAmortized()
                         && DateUtils.isAfter(targetDate, repaymentPeriod.getDueDate()))
                 .toList();
     }
@@ -948,6 +948,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
             }
             rp.setEmi(rp.getTotalPaidAmount());
             rp.moveOutstandingDueToReAging();
+            rp.setReAmortized(true);
         });
     }
 
