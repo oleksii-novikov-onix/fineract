@@ -2003,17 +2003,42 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
         final LocalDate transactionDate = loanTransaction.getTransactionDate();
         final List<LoanRepaymentScheduleInstallment> installments = transactionCtx.getInstallments();
         final Loan loan = loanTransaction.getLoan();
-        final LoanRepaymentScheduleInstallment currentInstallment = loan.getRelatedRepaymentScheduleInstallment(transactionDate);
+
+        // For re-amortized loans, find first unpaid period (may have dueDate before transactionDate)
+        final boolean isReAmortizedLoan = transactionCtx instanceof ProgressiveTransactionCtx ptx
+                && ptx.getModel().repaymentPeriods().stream().anyMatch(RepaymentPeriod::isReAmortized);
+        final LoanRepaymentScheduleInstallment currentInstallment = isReAmortizedLoan
+                ? installments.stream().filter(LoanRepaymentScheduleInstallment::isNotFullyPaidOff).findFirst().orElse(null)
+                : loan.getRelatedRepaymentScheduleInstallment(transactionDate);
 
         if (!installments.isEmpty() && transactionDate.isBefore(loan.getMaturityDate()) && currentInstallment != null) {
+            // For re-amortized: calculate future installments before any modifications
+            final List<LoanRepaymentScheduleInstallment> reAmortizedFutureInstallments = isReAmortizedLoan
+                    ? installments.stream().filter(i -> i.getFromDate().isAfter(currentInstallment.getFromDate())).toList()
+                    : null;
+
             if (currentInstallment.isNotFullyPaidOff()) {
                 if (transactionCtx instanceof ProgressiveTransactionCtx progressiveTransactionCtx
                         && loan.isInterestBearingAndInterestRecalculationEnabled()) {
-                    final BigDecimal interestOutstanding = currentInstallment.getInterestOutstanding(loan.getCurrency()).getAmount();
-                    final BigDecimal newInterest = emiCalculator.getPeriodInterestTillDate(progressiveTransactionCtx.getModel(),
-                            currentInstallment.getFromDate(), currentInstallment.getDueDate(), transactionDate, true).getAmount();
-                    if (interestOutstanding.compareTo(BigDecimal.ZERO) > 0 || newInterest.compareTo(BigDecimal.ZERO) > 0) {
-                        currentInstallment.updateInterestCharged(newInterest);
+                    if (isReAmortizedLoan) {
+                        // For re-amortized: sum interest from current period + future periods up to transactionDate
+                        BigDecimal totalInterest = emiCalculator.getPeriodInterestTillDate(progressiveTransactionCtx.getModel(),
+                                currentInstallment.getFromDate(), currentInstallment.getDueDate(), transactionDate, true).getAmount();
+                        for (LoanRepaymentScheduleInstallment futureInst : reAmortizedFutureInstallments) {
+                            if (!futureInst.getFromDate().isAfter(transactionDate)) {
+                                totalInterest = totalInterest
+                                        .add(emiCalculator.getPeriodInterestTillDate(progressiveTransactionCtx.getModel(),
+                                                futureInst.getFromDate(), futureInst.getDueDate(), transactionDate, true).getAmount());
+                            }
+                        }
+                        currentInstallment.updateInterestCharged(totalInterest);
+                    } else {
+                        final BigDecimal interestOutstanding = currentInstallment.getInterestOutstanding(loan.getCurrency()).getAmount();
+                        final BigDecimal newInterest = emiCalculator.getPeriodInterestTillDate(progressiveTransactionCtx.getModel(),
+                                currentInstallment.getFromDate(), currentInstallment.getDueDate(), transactionDate, true).getAmount();
+                        if (interestOutstanding.compareTo(BigDecimal.ZERO) > 0 || newInterest.compareTo(BigDecimal.ZERO) > 0) {
+                            currentInstallment.updateInterestCharged(newInterest);
+                        }
                     }
                 } else {
                     final BigDecimal totalInterest = currentInstallment.getInterestOutstanding(transactionCtx.getCurrency()).getAmount();
@@ -2033,8 +2058,9 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
             currentInstallment.updateDueDate(transactionDate);
 
-            final List<LoanRepaymentScheduleInstallment> futureInstallments = installments.stream()
-                    .filter(installment -> transactionDate.isBefore(installment.getDueDate())).toList();
+            // For re-amortized: use pre-calculated list, for normal: calculate after updateDueDate
+            final List<LoanRepaymentScheduleInstallment> futureInstallments = isReAmortizedLoan ? reAmortizedFutureInstallments
+                    : installments.stream().filter(installment -> transactionDate.isBefore(installment.getDueDate())).toList();
 
             final BigDecimal futurePrincipal = futureInstallments.stream().map(LoanRepaymentScheduleInstallment::getPrincipal)
                     .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -2062,8 +2088,10 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                         MathUtil.nullToZero(currentInstallment.getTotalPaidInAdvance()).add(futureTotalPaidInAdvance));
             }
 
-            final List<LoanRepaymentScheduleInstallment> installmentsUpToTransactionDate = loan
-                    .getInstallmentsUpToTransactionDate(transactionDate);
+            // For re-amortized: include paid installments + currentInstallment
+            final List<LoanRepaymentScheduleInstallment> installmentsUpToTransactionDate = isReAmortizedLoan ? installments.stream()
+                    .filter(i -> i.isObligationsMet() || i.equals(currentInstallment)).collect(Collectors.toCollection(ArrayList::new))
+                    : loan.getInstallmentsUpToTransactionDate(transactionDate);
 
             final List<LoanTransaction> transactionsToBeReprocessed = loan.getLoanTransactions().stream()
                     .filter(transaction -> transaction.getTransactionDate().isBefore(transactionDate))

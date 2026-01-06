@@ -3923,5 +3923,5 @@ Feature: LoanReAmortization
       | 15 March 2024    | Re-amortize      | 17.01  | 16.52     | 0.49     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 15 April 2024    | Accrual          | 1.73   | 0.0       | 1.73     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 15 April 2024    | Charge-off       | 84.72  | 83.57     | 1.15     | 0.0  | 0.0       | 0.0          | false    | false    |
-#    When Loan Pay-off is made on "15 April 2024"
-#    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+    When Loan Pay-off is made on "15 April 2024"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
