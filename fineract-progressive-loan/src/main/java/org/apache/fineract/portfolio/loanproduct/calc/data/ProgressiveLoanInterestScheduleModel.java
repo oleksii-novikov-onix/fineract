@@ -186,6 +186,7 @@ public class ProgressiveLoanInterestScheduleModel {
         }
 
         final List<RepaymentPeriod> affectedPeriods = repaymentPeriods.stream()//
+                .filter(period -> !period.isReAmortized())//
                 .filter(period -> period.getFromDate().isBefore(endDate) && !period.getDueDate().isBefore(fromDate))//
                 .toList();
         affectedPeriods.forEach(period -> insertInterestPausePeriods(period, fromDate, endDate));
