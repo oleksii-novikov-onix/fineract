@@ -3756,8 +3756,8 @@ Feature: LoanReAmortization
       | 01 January 2024  | Disbursement     | 100.0  | 0.0       | 0.0      | 0.0  | 0.0       | 100.0        | false    | false    |
       | 01 February 2024 | Repayment        | 17.01  | 16.43     | 0.58     | 0.0  | 0.0       | 83.57        | false    | false    |
       | 15 March 2024    | Re-amortize      | 17.01  | 16.52     | 0.49     | 0.0  | 0.0       | 0.0          | false    | false    |
-#    When Loan Pay-off is made on "15 March 2024"
-#    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
+    When Loan Pay-off is made on "15 March 2024"
+    Then Loan is closed with zero outstanding balance and it's all installments have obligations met
 
   @TestRailId:C4415 @AdvancedPaymentAllocation
   Scenario: Verify charge-off interest zero after re-amortization - Interest calculation: Default Behavior - UC4
