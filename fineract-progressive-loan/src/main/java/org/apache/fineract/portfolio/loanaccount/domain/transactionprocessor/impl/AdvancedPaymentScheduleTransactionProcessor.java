@@ -2068,7 +2068,15 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             final BigDecimal futurePenalty = futureInstallments.stream().map(LoanRepaymentScheduleInstallment::getPenaltyCharges)
                     .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            currentInstallment.updatePrincipal(MathUtil.nullToZero(currentInstallment.getPrincipal()).add(futurePrincipal));
+            final BigDecimal futureInterest = futureInstallments.stream().map(LoanRepaymentScheduleInstallment::getInterestCharged)
+                    .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            // Store current values before they might be reset by updateLoanSchedule
+            final BigDecimal currentPrincipal = MathUtil.nullToZero(currentInstallment.getPrincipal());
+            final BigDecimal currentInterest = MathUtil.nullToZero(currentInstallment.getInterestCharged());
+
+            // Update principal immediately (needed for isObligationsMet calculations below)
+            currentInstallment.updatePrincipal(currentPrincipal.add(futurePrincipal));
 
             if (currentInstallment.isObligationsMet()) {
                 final BigDecimal futureOutstandingPrincipal = futureInstallments.stream()
@@ -2119,6 +2127,20 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                     .forEach(LoanRepaymentScheduleInstallment::resetDerivedComponents);
 
             loanSchedule.updateLoanSchedule(loan, installmentsUpToTransactionDate);
+
+            // Re-set principal and interest AFTER updateLoanSchedule which may have reset them via copyFrom
+            // (copyFrom calls resetBalances when installment ID is null for new re-aged installments)
+            currentInstallment.updatePrincipal(currentPrincipal.add(futurePrincipal));
+
+            // Only add futureInterest for re-aged scenarios (model has 0% rate, interest stored in installments)
+            // For normal scenarios, just restore current interest (may have been reset by copyFrom)
+            final boolean hasReAgedInstallments = currentInstallment.isReAged()
+                    || futureInstallments.stream().anyMatch(LoanRepaymentScheduleInstallment::isReAged);
+            if (hasReAgedInstallments) {
+                currentInstallment.updateInterestCharged(currentInterest.add(futureInterest));
+            } else {
+                currentInstallment.updateInterestCharged(currentInterest);
+            }
 
             if (transactionCtx instanceof ProgressiveTransactionCtx progressiveTransactionCtx && loan.isInterestRecalculationEnabled()) {
                 updateRepaymentPeriodsAfterAccelerateMaturityDate(progressiveTransactionCtx, transactionDate, transactionsToBeReprocessed);
@@ -3389,10 +3411,31 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
         final BigDecimal totalPrincipal = periodsToRemove.stream().map(rp -> rp.getDuePrincipal().getAmount()).reduce(BigDecimal.ZERO,
                 BigDecimal::add);
 
-        final BigDecimal newInterest = emiCalculator.getPeriodInterestTillDate(transactionCtx.getModel(), lastPeriod.getFromDate(),
-                lastPeriod.getDueDate(), transactionDate, false).getAmount();
+        // Check if any period has re-aged interest (indicates re-age scenario where model has 0% rate)
+        final boolean hasReAgedInterest = (lastPeriod.getReAgedInterest() != null && lastPeriod.getReAgedInterest().isGreaterThanZero())
+                || periodsToRemove.stream().anyMatch(rp -> rp.getReAgedInterest() != null && rp.getReAgedInterest().isGreaterThanZero());
 
-        lastPeriod.setEmi(lastPeriod.getDuePrincipal().add(totalPrincipal).add(newInterest));
+        final BigDecimal totalInterest;
+        if (hasReAgedInterest) {
+            // For re-aged scenarios: aggregate interest from future periods (model has 0% rate)
+            final BigDecimal futureInterest = periodsToRemove.stream().map(rp -> rp.getDueInterest().getAmount()).reduce(BigDecimal.ZERO,
+                    BigDecimal::add);
+            final BigDecimal currentPeriodInterest = lastPeriod.getDueInterest().getAmount();
+            totalInterest = currentPeriodInterest.add(futureInterest);
+
+            // Update reAgedInterest on lastPeriod to include interest from removed periods
+            if (futureInterest.compareTo(BigDecimal.ZERO) > 0) {
+                final Money currentReAgedInterest = lastPeriod.getReAgedInterest() != null ? lastPeriod.getReAgedInterest()
+                        : Money.zero(transactionCtx.getCurrency());
+                lastPeriod.setReAgedInterest(currentReAgedInterest.plus(futureInterest));
+            }
+        } else {
+            // For normal scenarios: recalculate interest from model
+            totalInterest = emiCalculator.getPeriodInterestTillDate(transactionCtx.getModel(), lastPeriod.getFromDate(),
+                    lastPeriod.getDueDate(), transactionDate, false).getAmount();
+        }
+
+        lastPeriod.setEmi(lastPeriod.getDuePrincipal().add(totalPrincipal).add(totalInterest));
 
         emiCalculator.calculateRateFactorForRepaymentPeriod(lastPeriod, transactionCtx.getModel());
         transactionCtx.getModel().disableEMIRecalculation();
