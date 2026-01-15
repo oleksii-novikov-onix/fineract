@@ -2071,12 +2071,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             final BigDecimal futureInterest = futureInstallments.stream().map(LoanRepaymentScheduleInstallment::getInterestCharged)
                     .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // Store current values before they might be reset by updateLoanSchedule
-            final BigDecimal currentPrincipal = MathUtil.nullToZero(currentInstallment.getPrincipal());
-            final BigDecimal currentInterest = MathUtil.nullToZero(currentInstallment.getInterestCharged());
-
-            // Update principal immediately (needed for isObligationsMet calculations below)
-            currentInstallment.updatePrincipal(currentPrincipal.add(futurePrincipal));
+            currentInstallment.updatePrincipal(MathUtil.nullToZero(currentInstallment.getPrincipal()).add(futurePrincipal));
 
             if (currentInstallment.isObligationsMet()) {
                 final BigDecimal futureOutstandingPrincipal = futureInstallments.stream()
@@ -2128,18 +2123,11 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
             loanSchedule.updateLoanSchedule(loan, installmentsUpToTransactionDate);
 
-            // Re-set principal and interest AFTER updateLoanSchedule which may have reset them via copyFrom
-            // (copyFrom calls resetBalances when installment ID is null for new re-aged installments)
-            currentInstallment.updatePrincipal(currentPrincipal.add(futurePrincipal));
-
-            // Only add futureInterest for re-aged scenarios (model has 0% rate, interest stored in installments)
-            // For normal scenarios, just restore current interest (may have been reset by copyFrom)
+            // For re-aged scenarios: add futureInterest (model has 0% rate, interest stored in installments)
             final boolean hasReAgedInstallments = currentInstallment.isReAged()
                     || futureInstallments.stream().anyMatch(LoanRepaymentScheduleInstallment::isReAged);
             if (hasReAgedInstallments) {
-                currentInstallment.updateInterestCharged(currentInterest.add(futureInterest));
-            } else {
-                currentInstallment.updateInterestCharged(currentInterest);
+                currentInstallment.updateInterestCharged(MathUtil.nullToZero(currentInstallment.getInterestCharged()).add(futureInterest));
             }
 
             if (transactionCtx instanceof ProgressiveTransactionCtx progressiveTransactionCtx && loan.isInterestRecalculationEnabled()) {
