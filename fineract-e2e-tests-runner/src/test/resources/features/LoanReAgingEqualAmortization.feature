@@ -11149,7 +11149,6 @@ Feature: LoanReAgingEqualAmortization
     When Loan Pay-off is made on "15 March 2024"
     Then Loan is closed with zero outstanding balance and it's all installments have obligations met
 
-  @Skip
   @TestRailId:C4527 @AdvancedPaymentAllocation
   Scenario: Verify Loan re-aging transaction with Contract Termination after re-age - interest bearing loan with equal amortization; outstanding payable interest - UC4
     When Admin sets the business date to "01 January 2024"
@@ -11217,17 +11216,25 @@ Feature: LoanReAgingEqualAmortization
       | Transaction date | Transaction Type | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2024  | Disbursement     | 100.0  | 0.0       | 0.0      | 0.0  | 0.0       | 100.0        | false    | false    |
       | 01 February 2024 | Repayment        | 17.01  | 16.43     | 0.58     | 0.0  | 0.0       | 83.57        | false    | false    |
-      | 14 March 2024    | Accrual           | 1.27   | 0.0       | 1.27     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 14 March 2024    | Accrual          | 1.27   | 0.0       | 1.27     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 15 March 2024    | Re-age           | 84.28  | 83.57     | 0.71     | 0.0  | 0.0       | 0.0          | false    | false    |
     When Admin sets the business date to "01 April 2024"
     And Admin successfully terminates loan contract
+    Then Loan Repayment schedule has 4 periods, with the following data for periods:
+      | Nr | Days | Date             | Paid date        | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late | Outstanding |
+      |    |      | 01 January 2024  |                  | 100.0           |               |          | 0.0  |           | 0.0   | 0.0   |            |      |             |
+      | 1  | 31   | 01 February 2024 | 01 February 2024 | 83.57           | 16.43         | 0.58     | 0.0  | 0.0       | 17.01 | 17.01 | 0.0        | 0.0  | 0.0         |
+      | 2  | 29   | 01 March 2024    | 15 March 2024    | 83.57           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0  | 0.0         |
+      | 3  | 14   | 15 March 2024    | 15 March 2024    | 83.57           | 0.0           | 0.0      | 0.0  | 0.0       | 0.0   | 0.0   | 0.0        | 0.0  | 0.0         |
+      | 4  | 17   | 01 April 2024    |                  | 0.0             | 83.57         | 0.71     | 0.0  | 0.0       | 84.28 | 0.0   | 0.0        | 0.0  | 84.28       |
     Then Loan Transactions tab has the following data:
       | Transaction date | Transaction Type     | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
       | 01 January 2024  | Disbursement         | 100.0  | 0.0       | 0.0      | 0.0  | 0.0       | 100.0        | false    | false    |
       | 01 February 2024 | Repayment            | 17.01  | 16.43     | 0.58     | 0.0  | 0.0       | 83.57        | false    | false    |
       | 14 March 2024    | Accrual              | 1.27   | 0.0       | 1.27     | 0.0  | 0.0       | 0.0          | false    | false    |
       | 15 March 2024    | Re-age               | 84.28  | 83.57     | 0.71     | 0.0  | 0.0       | 0.0          | false    | false    |
-      | 01 April 2024    | Contract Termination | 84.55  | 83.57     | 0.98     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 01 April 2024    | Accrual              | 0.02   | 0.0       | 0.02     | 0.0  | 0.0       | 0.0          | false    | false    |
+      | 01 April 2024    | Contract Termination | 84.28  | 83.57     | 0.71     | 0.0  | 0.0       | 0.0          | false    | false    |
     When Loan Pay-off is made on "01 April 2024"
     Then Loan is closed with zero outstanding balance and it's all installments have obligations met
 
