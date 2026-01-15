@@ -531,6 +531,37 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     }
 
     @Override
+    public Money calculateInterestForAccelerateMaturity(final ProgressiveLoanInterestScheduleModel scheduleModel,
+            final RepaymentPeriod lastPeriod, final List<RepaymentPeriod> periodsToRemove, final LocalDate transactionDate) {
+        final boolean hasReAgedInterest = hasReAgedInterest(lastPeriod, periodsToRemove);
+
+        if (hasReAgedInterest) {
+            // For re-aged scenarios: aggregate interest from periods (model has 0% rate)
+            final Money futureInterest = periodsToRemove.stream().map(RepaymentPeriod::getDueInterest).reduce(scheduleModel.zero(),
+                    Money::add);
+            final Money currentPeriodInterest = lastPeriod.getDueInterest();
+            final Money totalInterest = currentPeriodInterest.add(futureInterest);
+
+            // Update reAgedInterest on lastPeriod to include interest from removed periods
+            if (futureInterest.isGreaterThanZero()) {
+                final Money currentReAgedInterest = lastPeriod.getReAgedInterest() != null ? lastPeriod.getReAgedInterest()
+                        : scheduleModel.zero();
+                lastPeriod.setReAgedInterest(currentReAgedInterest.add(futureInterest));
+            }
+
+            return totalInterest;
+        } else {
+            // For normal scenarios: calculate prorated interest from model
+            return getPeriodInterestTillDate(scheduleModel, lastPeriod.getFromDate(), lastPeriod.getDueDate(), transactionDate, false);
+        }
+    }
+
+    private boolean hasReAgedInterest(final RepaymentPeriod lastPeriod, final List<RepaymentPeriod> periodsToRemove) {
+        return (lastPeriod.getReAgedInterest() != null && lastPeriod.getReAgedInterest().isGreaterThanZero())
+                || periodsToRemove.stream().anyMatch(rp -> rp.getReAgedInterest() != null && rp.getReAgedInterest().isGreaterThanZero());
+    }
+
+    @Override
     public Money getOutstandingLoanBalanceOfPeriod(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate targetDate) {
         ProgressiveLoanInterestScheduleModel recalculatedScheduleModelTillDate = recalculateScheduleModelTillDate(scheduleModel,
                 targetDate);

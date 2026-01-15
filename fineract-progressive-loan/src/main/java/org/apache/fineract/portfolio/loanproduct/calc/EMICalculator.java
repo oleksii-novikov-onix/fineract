@@ -176,4 +176,7 @@ public interface EMICalculator {
 
     void updateModelRepaymentPeriodsDuringReAmortizationWithEqualInterestSplit(ProgressiveLoanInterestScheduleModel model,
             LocalDate transactionDate);
+
+    Money calculateInterestForAccelerateMaturity(ProgressiveLoanInterestScheduleModel scheduleModel, RepaymentPeriod lastPeriod,
+            List<RepaymentPeriod> periodsToRemove, LocalDate transactionDate);
 }

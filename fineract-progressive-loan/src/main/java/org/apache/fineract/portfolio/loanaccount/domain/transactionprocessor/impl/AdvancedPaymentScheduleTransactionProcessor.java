@@ -3391,37 +3391,17 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
         final List<RepaymentPeriod> periodsToRemove = repaymentPeriods.stream()
                 .filter(rp -> DateUtils.isAfterInclusive(rp.getFromDate(), transactionDate)).toList();
 
+        final BigDecimal totalPrincipal = periodsToRemove.stream().map(rp -> rp.getDuePrincipal().getAmount()).reduce(BigDecimal.ZERO,
+                BigDecimal::add);
+
+        // Calculate interest before removing periods (handles both normal and re-aged scenarios)
+        final Money totalInterest = emiCalculator.calculateInterestForAccelerateMaturity(transactionCtx.getModel(), lastPeriod,
+                periodsToRemove, transactionDate);
+
         lastPeriod.setDueDate(transactionDate);
         lastPeriod.getInterestPeriods().removeIf(interestPeriod -> !interestPeriod.getFromDate().isBefore(transactionDate));
 
         transactionCtx.getModel().repaymentPeriods().removeAll(periodsToRemove);
-
-        final BigDecimal totalPrincipal = periodsToRemove.stream().map(rp -> rp.getDuePrincipal().getAmount()).reduce(BigDecimal.ZERO,
-                BigDecimal::add);
-
-        // Check if any period has re-aged interest (indicates re-age scenario where model has 0% rate)
-        final boolean hasReAgedInterest = (lastPeriod.getReAgedInterest() != null && lastPeriod.getReAgedInterest().isGreaterThanZero())
-                || periodsToRemove.stream().anyMatch(rp -> rp.getReAgedInterest() != null && rp.getReAgedInterest().isGreaterThanZero());
-
-        final BigDecimal totalInterest;
-        if (hasReAgedInterest) {
-            // For re-aged scenarios: aggregate interest from future periods (model has 0% rate)
-            final BigDecimal futureInterest = periodsToRemove.stream().map(rp -> rp.getDueInterest().getAmount()).reduce(BigDecimal.ZERO,
-                    BigDecimal::add);
-            final BigDecimal currentPeriodInterest = lastPeriod.getDueInterest().getAmount();
-            totalInterest = currentPeriodInterest.add(futureInterest);
-
-            // Update reAgedInterest on lastPeriod to include interest from removed periods
-            if (futureInterest.compareTo(BigDecimal.ZERO) > 0) {
-                final Money currentReAgedInterest = lastPeriod.getReAgedInterest() != null ? lastPeriod.getReAgedInterest()
-                        : Money.zero(transactionCtx.getCurrency());
-                lastPeriod.setReAgedInterest(currentReAgedInterest.plus(futureInterest));
-            }
-        } else {
-            // For normal scenarios: recalculate interest from model
-            totalInterest = emiCalculator.getPeriodInterestTillDate(transactionCtx.getModel(), lastPeriod.getFromDate(),
-                    lastPeriod.getDueDate(), transactionDate, false).getAmount();
-        }
 
         lastPeriod.setEmi(lastPeriod.getDuePrincipal().add(totalPrincipal).add(totalInterest));
 
