@@ -2190,7 +2190,9 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                     });
 
             // Calculate total credited principal from CBR transactions - this increases the effective loan principal
+            // Must exclude additional installments to match the principal sum calculation below
             final BigDecimal totalCreditedPrincipal = installments.stream() //
+                    .filter(i -> !i.isAdditional()) //
                     .map(i -> MathUtil.nullToZero(i.getCreditedPrincipal())) //
                     .reduce(ZERO, BigDecimal::add);
 
