@@ -2189,11 +2189,19 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                         }
                     });
 
-            final Money amountToEditLastInstallment = loanTransaction.getLoan().getPrincipal().minus(installments.stream() //
-                    .filter(i -> i.getPrincipal() != null) //
-                    .filter(i -> !i.isAdditional()) //
-                    .map(LoanRepaymentScheduleInstallment::getPrincipal) //
-                    .reduce(ZERO, BigDecimal::add));
+            // Calculate total credited principal from CBR transactions - this increases the effective loan principal
+            final BigDecimal totalCreditedPrincipal = installments.stream() //
+                    .map(i -> MathUtil.nullToZero(i.getCreditedPrincipal())) //
+                    .reduce(ZERO, BigDecimal::add);
+
+            final Money amountToEditLastInstallment = loanTransaction.getLoan().getPrincipal() //
+                    .plus(Money.of(currency, totalCreditedPrincipal)) // Add credited principal to effective loan
+                                                                      // principal
+                    .minus(installments.stream() //
+                            .filter(i -> i.getPrincipal() != null) //
+                            .filter(i -> !i.isAdditional()) //
+                            .map(LoanRepaymentScheduleInstallment::getPrincipal) //
+                            .reduce(ZERO, BigDecimal::add));
 
             BigDecimal principalBalance = amountToEditLastInstallment.getAmount();
             for (int i = installments.size() - 1; i > 0 && BigDecimal.ZERO.compareTo(principalBalance) != 0; i--) {
