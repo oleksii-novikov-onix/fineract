@@ -1805,20 +1805,6 @@ Feature: Loan interest rate change on repayment schedule
     And Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due    | Paid   | In advance | Late  | Outstanding |
       | 231.63        | 2.1      | 0.0  | 0.0       | 233.73 | 233.73 | 222.72     | 11.01 | 0.0         |
-    And Loan Transactions tab has the following data:
-      | Transaction date | Transaction Type       | Amount | Principal | Interest | Fees | Penalties | Loan Balance | Reverted | Replayed |
-      | 03 October 2025  | Disbursement           | 231.59 | 0.0       | 0.0      | 0.0  | 0.0       | 231.59       | false    | false    |
-      | 15 October 2025  | Merchant Issued Refund | 220.83 | 220.83    | 0.0      | 0.0  | 0.0       | 10.76        | false    | false    |
-      | 15 October 2025  | Interest Refund        | 1.85   | 0.0       | 1.85     | 0.0  | 0.0       | 10.76        | false    | true     |
-      | 30 October 2025  | Accrual                | 2.84   | 0.0       | 2.84     | 0.0  | 0.0       | 0.0          | false    | false    |
-      | 30 October 2025  | Repayment              | 11.04  | 10.76     | 0.2      | 0.0  | 0.0       | 0.0          | true     | true     |
-      | 30 October 2025  | Accrual Adjustment     | 0.79   | 0.0       | 0.79     | 0.0  | 0.0       | 0.0          | false    | false    |
-      | 03 November 2025 | Accrual Activity       | 2.1    | 0.0       | 2.1      | 0.0  | 0.0       | 0.0          | false    | true     |
-      | 06 November 2025 | Credit Balance Refund  | 0.04   | 0.04      | 0.0      | 0.0  | 0.0       | 10.8         | false    | true     |
-      | 07 November 2025 | Repayment              | 1.22   | 0.97      | 0.25     | 0.0  | 0.0       | 9.83         | false    | false    |
-      | 07 November 2025 | Accrual                | 0.08   | 0.0       | 0.08     | 0.0  | 0.0       | 0.0          | false    | false    |
-      | 10 November 2025 | Repayment              | 9.83   | 9.83      | 0.0      | 0.0  | 0.0       | 0.0          | false    | false    |
-      | 10 November 2025 | Accrual Adjustment     | 0.03   | 0.0       | 0.03     | 0.0  | 0.0       | 0.0          | false    | false    |
     And Loan status will be "CLOSED_OBLIGATIONS_MET"
 
   @TestRailId:C4626

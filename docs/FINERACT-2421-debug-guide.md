@@ -61,7 +61,7 @@ P2: EMI=41.58 + credited=0.04 + futureUnrecognizedInterest=0.05 - dueInterest=0.
 | 4 | 30 Oct 2025 | Loan Reschedule: 35.99%→25.99% (rescheduleFromDate=04 Oct 2025, backdated) | EMI: 42.75→41.58; Interest Refund 1.85 (replayed); P1 interest: 6.95→2.05 |
 | 5 | 06 Nov 2025 | CBR 0.04 EUR | totalDuePrincipal: 231.59→231.63; Loan Balance: 10.76→10.80 |
 | 6 | 07 Nov 2025 | **Undo** платежу з кроку 3 | 11.04 скасовано (reverted=true, replayed=true) → P1 outstandingP=10.76, outstandingI=0.25; P2 interest=0.03 (overdue) |
-| 7 | 10 Nov 2025 | Repayment 11.05 EUR (клієнт вносить) | Система створює 2 транзакції: Rep 1.22 на 07 Nov (P=0.97, I=0.25) + Rep 9.83 на 10 Nov (P=9.83, I=0.0) → Loan Balance=0.0, CLOSED_OBLIGATIONS_MET |
+| 7 | 10 Nov 2025 | Repayment 11.05 EUR | Loan Balance=0.0, CLOSED_OBLIGATIONS_MET |
 
 **Після кроку 7 графік МАЄ показувати P6 Balance=0.0, але БАГ показує -0.05.**
 
@@ -331,7 +331,7 @@ if (aggregatedOverDuePrincipal.isGreaterThanZero()
 
 ---
 
-## Очікуваний фінальний стан (графік + транзакції)
+## Очікуваний фінальний стан (графік)
 
 ### Графік після фінального платежу (крок 7)
 
@@ -346,29 +346,6 @@ if (aggregatedOverDuePrincipal.isGreaterThanZero()
 | **Total** | | | | **231.63** | **2.1** | **233.73** | **233.73** | **222.72** | **11.01** | **0.0** |
 
 **Ключові відмінності від бага:** P2 principal=41.62 (не 41.67), P2 Balance=166.32 (не 166.27), P6 Balance=0.0 (не -0.05). Статус: CLOSED_OBLIGATIONS_MET.
-
-### Транзакції
-
-| Дата | Тип | Сума | Principal | Interest | Loan Balance | Reverted | Replayed |
-|------|-----|------|-----------|----------|-------------|----------|----------|
-| 03 Oct 2025 | Disbursement | 231.59 | 0.0 | 0.0 | 231.59 | false | false |
-| 15 Oct 2025 | Merchant Issued Refund | 220.83 | 220.83 | 0.0 | 10.76 | false | false |
-| 15 Oct 2025 | Interest Refund | 1.85 | 0.0 | 1.85 | 10.76 | false | true |
-| 30 Oct 2025 | Accrual | 2.84 | 0.0 | 2.84 | 0.0 | false | false |
-| 30 Oct 2025 | Repayment | 11.04 | 10.76 | 0.2 | 0.0 | **true** | true |
-| 30 Oct 2025 | Accrual Adjustment | 0.79 | 0.0 | 0.79 | 0.0 | false | false |
-| 03 Nov 2025 | Accrual Activity | 2.1 | 0.0 | 2.1 | 0.0 | false | true |
-| 06 Nov 2025 | Credit Balance Refund | 0.04 | 0.04 | 0.0 | 10.8 | false | true |
-| 07 Nov 2025 | Repayment | 1.22 | 0.97 | 0.25 | 9.83 | false | false |
-| 07 Nov 2025 | Accrual | 0.08 | 0.0 | 0.08 | 0.0 | false | false |
-| 10 Nov 2025 | Repayment | 9.83 | 9.83 | 0.0 | 0.0 | false | false |
-| 10 Nov 2025 | Accrual Adjustment | 0.03 | 0.0 | 0.03 | 0.0 | false | false |
-
-**Зверніть увагу:** Клієнт робить ОДИН платіж 11.05 на 10 Nov, але система розбиває його на дві транзакції:
-- **1.22 на 07 Nov** (P=0.97, I=0.25) — покриває залишок P1 interest (2.10 - 1.85 = 0.25) + частину principal
-- **9.83 на 10 Nov** (P=9.83, I=0.0) — покриває залишок principal
-
-Перевірка: 0.97 + 9.83 = 10.80 (principal) = 10.76 (P1 outstanding) + 0.04 (P2 CBR credit). Interest: 0.25 = P1 overdue interest.
 
 ---
 
