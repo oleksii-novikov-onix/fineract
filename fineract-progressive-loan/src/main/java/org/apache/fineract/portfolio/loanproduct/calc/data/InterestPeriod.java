@@ -111,7 +111,10 @@ public class InterestPeriod implements Comparable<InterestPeriod> {
     }
 
     public void addBalanceCorrectionAmount(final Money additionalBalanceCorrectionAmount) {
-        this.balanceCorrectionAmount = MathUtil.plus(this.getBalanceCorrectionAmount(), additionalBalanceCorrectionAmount);
+        Money before = this.getBalanceCorrectionAmount();
+        this.balanceCorrectionAmount = MathUtil.plus(before, additionalBalanceCorrectionAmount);
+        org.apache.fineract.portfolio.loanproduct.calc.DebugFileLogger.logIPBalanceCorrectionAdd(this, additionalBalanceCorrectionAmount,
+                before);
     }
 
     public void addDisbursementAmount(final Money additionalDisbursementAmount) {

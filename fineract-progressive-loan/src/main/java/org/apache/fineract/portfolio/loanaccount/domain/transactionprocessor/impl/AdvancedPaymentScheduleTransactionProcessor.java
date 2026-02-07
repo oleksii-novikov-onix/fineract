@@ -110,6 +110,7 @@ import org.apache.fineract.portfolio.loanaccount.service.InterestRefundService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargeService;
 import org.apache.fineract.portfolio.loanaccount.service.schedule.LoanScheduleComponent;
+import org.apache.fineract.portfolio.loanproduct.calc.DebugFileLogger;
 import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.EqualAmortizationValues;
 import org.apache.fineract.portfolio.loanproduct.calc.data.OutstandingDetails;
@@ -236,11 +237,19 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
         List<ChangeOperation> changeOperations = createSortedChangeList(loanTermVariations, loanTransactions, charges);
 
+        DebugFileLogger.clear();
+        DebugFileLogger.logReprocessStart(targetDate, changeOperations.size());
+        DebugFileLogger.dumpModel("INITIAL MODEL", scheduleModel);
+
         List<LoanTransaction> overpaidTransactions = new ArrayList<>();
         for (final ChangeOperation changeOperation : changeOperations) {
             if (changeOperation.isLoanTermVariationsData()) {
                 final LoanTermVariationsData termVariationsData = changeOperation.getLoanTermVariationsData().get();
+                DebugFileLogger.log("  >> processLoanTermVariation: type=%s, date=%s",
+                        termVariationsData.getTermVariationType(), termVariationsData.getTermVariationApplicableFrom());
                 processLoanTermVariation(termVariationsData, ctx);
+                DebugFileLogger.dumpModel("AFTER TERM_VARIATION " + termVariationsData.getTermVariationType(),
+                        ctx.getModel());
             } else if (changeOperation.isTransaction()) {
                 LoanTransaction transaction = changeOperation.getLoanTransaction().get();
                 if (loan.getStatus().isOverpaid() && transaction.isAccrualActivity()) {
@@ -253,6 +262,8 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                         }
                     }
                 }
+                DebugFileLogger.logReprocessTransactionStart(transaction.getTypeOf().name(), transaction.getTransactionDate(),
+                        transaction.getAmount(), transaction.isReversed());
                 processSingleTransaction(transaction, ctx);
                 transaction = getProcessedTransaction(changedTransactionDetail, transaction);
                 ctx.getAlreadyProcessedTransactions().add(transaction);
@@ -280,7 +291,11 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
                 createNewTransaction(oldTransaction, newTransaction, ctx);
             }
         }
+        DebugFileLogger.logReprocessFinalRecalc(targetDate);
         recalculateInterestForDate(targetDate, ctx);
+        DebugFileLogger.dumpModel("AFTER FINAL recalcInterest", ctx.getModel());
+        DebugFileLogger.logReprocessEnd();
+        DebugFileLogger.resetEmiDedup();
         List<LoanTransaction> txs = changeOperations.stream() //
                 .filter(ChangeOperation::isTransaction) //
                 .map(e -> e.getLoanTransaction().get()).toList();
@@ -464,6 +479,8 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
     @Override
     public ChangedTransactionDetail processLatestTransaction(LoanTransaction loanTransaction, TransactionCtx ctx) {
+        DebugFileLogger.logProcessLatestTransaction(loanTransaction.getTypeOf().name(), loanTransaction.getTransactionDate(),
+                loanTransaction.getAmount());
         // If we are behind, we might need to first recalculate interest
         if (ctx instanceof ProgressiveTransactionCtx progressiveTransactionCtx) {
             if (loanTransaction.isRepaymentLikeType() && loanTransaction.isNotReversed()) {
@@ -490,6 +507,10 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             case CONTRACT_TERMINATION -> handleContractTermination(loanTransaction, ctx);
             // TODO: Cover rest of the transaction types
             default -> log.warn("Unhandled transaction processing for transaction type: {}", loanTransaction.getTypeOf());
+        }
+        if (ctx instanceof ProgressiveTransactionCtx progressiveTransactionCtx) {
+            DebugFileLogger.dumpModel("AFTER processLatestTransaction " + loanTransaction.getTypeOf().name() + " "
+                    + loanTransaction.getTransactionDate(), progressiveTransactionCtx.getModel());
         }
         return ctx.getChangedTransactionDetail();
     }
@@ -1850,8 +1871,14 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             if (isInterestRecalculationSupported(ctx, loan) && !loan.isNpa()
                     && !loan.getLoanInterestRecalculationDetails().disallowInterestCalculationOnPastDue()) {
 
+                LocalDate lastOBCBefore = ctx.getModel().lastOverdueBalanceChange();
                 boolean modelHasUpdates = emiCalculator.recalculateModelOverdueAmountsTillDate(ctx.getModel(), targetDate,
                         ctx.isPrepayAttempt());
+                String caller = Thread.currentThread().getStackTrace().length > 3
+                        ? Thread.currentThread().getStackTrace()[2].getMethodName() : "unknown";
+                DebugFileLogger.logRecalcInterestForDate(targetDate, modelHasUpdates, caller);
+                DebugFileLogger.logLastOverdueBalanceChangeSet(lastOBCBefore, ctx.getModel().lastOverdueBalanceChange(),
+                        "recalcInterestForDate");
                 if (modelHasUpdates && updateInstallments) {
                     updateInstallmentsPrincipalAndInterestByModel(ctx);
                 }

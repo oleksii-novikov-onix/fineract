@@ -1791,35 +1791,8 @@ Feature: Loan interest rate change on repayment schedule
     And Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due    | Paid   | In advance | Late | Outstanding |
       | 231.63        | 2.13     | 0.0  | 0.0       | 233.76 | 222.68 | 222.68     | 0.0  | 11.08       |
-    When Customer makes "AUTOPAY" repayment on "07 November 2025" with 1.22 EUR transaction amount
-    Then Loan Repayment schedule has 6 periods, with the following data for periods:
-      | Nr | Days | Date             | Paid date       | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late | Outstanding |
-      |    |      | 03 October 2025  |                 | 231.59          |               |          | 0.0  |           | 0.0   | 0.0   |            |      |             |
-      | 1  | 31   | 03 November 2025 |                 | 207.9           | 23.69         | 2.1      | 0.0  | 0.0       | 25.79 | 16.0  | 14.78      | 1.22 | 9.79        |
-      | 2  | 30   | 03 December 2025 |                 | 166.32          | 41.62         | 0.03     | 0.0  | 0.0       | 41.65 | 41.58 | 41.58      | 0.0  | 0.07        |
-      | 3  | 31   | 03 January 2026  | 15 October 2025 | 124.74          | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 4  | 31   | 03 February 2026 | 15 October 2025 | 83.16           | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 5  | 28   | 03 March 2026    | 15 October 2025 | 41.58           | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 6  | 31   | 03 April 2026    | 15 October 2025 | 0.0             | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-    And Loan Repayment schedule has the following data in Total row:
-      | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
-      | 231.63        | 2.13     | 0.0  | 0.0       | 233.76 | 223.9 | 222.68     | 1.22 | 9.86        |
-    When Admin sets the business date to "08 November 2025"
-    And Admin runs inline COB job for Loan
-    Then Loan Repayment schedule has 6 periods, with the following data for periods:
-      | Nr | Days | Date             | Paid date       | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late | Outstanding |
-      |    |      | 03 October 2025  |                 | 231.59          |               |          | 0.0  |           | 0.0   | 0.0   |            |      |             |
-      | 1  | 31   | 03 November 2025 |                 | 207.9           | 23.69         | 2.1      | 0.0  | 0.0       | 25.79 | 16.0  | 14.78      | 1.22 | 9.79        |
-      | 2  | 30   | 03 December 2025 |                 | 166.32          | 41.62         | 0.04     | 0.0  | 0.0       | 41.66 | 41.58 | 41.58      | 0.0  | 0.08        |
-      | 3  | 31   | 03 January 2026  | 15 October 2025 | 124.74          | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 4  | 31   | 03 February 2026 | 15 October 2025 | 83.16           | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 5  | 28   | 03 March 2026    | 15 October 2025 | 41.58           | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-      | 6  | 31   | 03 April 2026    | 15 October 2025 | 0.0             | 41.58         | 0.0      | 0.0  | 0.0       | 41.58 | 41.58 | 41.58      | 0.0  | 0.0         |
-    And Loan Repayment schedule has the following data in Total row:
-      | Principal due | Interest | Fees | Penalties | Due    | Paid  | In advance | Late | Outstanding |
-      | 231.63        | 2.14     | 0.0  | 0.0       | 233.77 | 223.9 | 222.68     | 1.22 | 9.87        |
     When Admin sets the business date to "10 November 2025"
-    And Customer makes "AUTOPAY" repayment on "10 November 2025" with 9.83 EUR transaction amount
+    And Customer makes "AUTOPAY" repayment on "10 November 2025" with 11.05 EUR transaction amount
     Then Loan Repayment schedule has 6 periods, with the following data for periods:
       | Nr | Days | Date             | Paid date        | Balance of loan | Principal due | Interest | Fees | Penalties | Due   | Paid  | In advance | Late  | Outstanding |
       |    |      | 03 October 2025  |                  | 231.59          |               |          | 0.0  |           | 0.0   | 0.0   |            |       |             |

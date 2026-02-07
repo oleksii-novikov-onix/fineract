@@ -360,6 +360,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     @Override
     public void addBalanceCorrection(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate balanceCorrectionDate,
             Money balanceCorrectionAmount) {
+        DebugFileLogger.logBalanceCorrectionEntry(balanceCorrectionDate, balanceCorrectionAmount, scheduleModel);
         scheduleModel.changeOutstandingBalanceAndUpdateInterestPeriods(balanceCorrectionDate, scheduleModel.zero(), balanceCorrectionAmount,
                 scheduleModel.zero()).ifPresent(repaymentPeriod -> {
                     calculateRateFactorForRepaymentPeriod(repaymentPeriod, scheduleModel);
@@ -388,6 +389,8 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     @Override
     public void payPrincipal(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate repaymentPeriodFromDate,
             LocalDate repaymentPeriodDueDate, LocalDate transactionDate, Money principalAmount) {
+        DebugFileLogger.logPayPrincipalEntry(repaymentPeriodFromDate, repaymentPeriodDueDate, transactionDate, principalAmount,
+                scheduleModel);
         if (MathUtil.isEmpty(principalAmount)) {
             return;
         }
@@ -460,6 +463,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     @Override
     public void creditPrincipal(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate transactionDate,
             Money creditedPrincipalAmount) {
+        DebugFileLogger.logCreditPrincipalEntry(transactionDate, creditedPrincipalAmount);
         addCredit(scheduleModel, transactionDate, creditedPrincipalAmount, scheduleModel.zero());
     }
 
@@ -717,11 +721,17 @@ public final class ProgressiveEMICalculator implements EMICalculator {
         final List<RepaymentPeriod> overdueInstallmentsSortedByInstallmentNumber = findPossiblyOverdueRepaymentPeriods(
                 recalculatedTargetDate, scheduleModel);
         if (!overdueInstallmentsSortedByInstallmentNumber.isEmpty()) {
+            DebugFileLogger.logOverdueRecalcEntry(recalculatedTargetDate, scheduleModel,
+                    overdueInstallmentsSortedByInstallmentNumber);
             final RepaymentPeriod lastPeriod = scheduleModel.getLastRepaymentPeriod();
             final RepaymentPeriod currentPeriod = scheduleModel.findRepaymentPeriod(recalculatedTargetDate).orElse(lastPeriod);
             Money overDuePrincipal = scheduleModel.zero();
             Money aggregatedOverDuePrincipal = scheduleModel.zero();
+            int loopIdx = 0;
             for (RepaymentPeriod processingPeriod : overdueInstallmentsSortedByInstallmentNumber) {
+                boolean skipped = overDuePrincipal.isZero();
+                DebugFileLogger.logOverdueLoopIteration(loopIdx, processingPeriod, overDuePrincipal,
+                        aggregatedOverDuePrincipal, skipped, scheduleModel);
                 // add and subtract outstanding principal
                 if (!overDuePrincipal.isZero()) {
                     final boolean currentChanges = adjustOverduePrincipal(recalculatedTargetDate, processingPeriod, overDuePrincipal,
@@ -732,9 +742,13 @@ public final class ProgressiveEMICalculator implements EMICalculator {
 
                 overDuePrincipal = processingPeriod.getOutstandingPrincipal();
                 aggregatedOverDuePrincipal = aggregatedOverDuePrincipal.add(overDuePrincipal);
+                loopIdx++;
             }
 
-            if (!currentPeriod.equals(lastPeriod) || !recalculatedTargetDate.isAfter(lastPeriod.getDueDate())) {
+            boolean willExecuteFinal = !currentPeriod.equals(lastPeriod) || !recalculatedTargetDate.isAfter(lastPeriod.getDueDate());
+            DebugFileLogger.logOverdueFinalAdjust(currentPeriod, overDuePrincipal, aggregatedOverDuePrincipal,
+                    willExecuteFinal, scheduleModel);
+            if (willExecuteFinal) {
                 final boolean currentChanges = adjustOverduePrincipal(recalculatedTargetDate, currentPeriod, overDuePrincipal,
                         aggregatedOverDuePrincipal, scheduleModel, prepayAttempt);
                 hasChange = hasChange || currentChanges;
@@ -742,8 +756,11 @@ public final class ProgressiveEMICalculator implements EMICalculator {
             }
             if (aggregatedOverDuePrincipal.isGreaterThanZero() && (scheduleModel.lastOverdueBalanceChange() == null
                     || scheduleModel.lastOverdueBalanceChange().isBefore(recalculatedTargetDate))) {
+                LocalDate oldOBC = scheduleModel.lastOverdueBalanceChange();
                 scheduleModel.lastOverdueBalanceChange(recalculatedTargetDate);
+                DebugFileLogger.logLastOverdueBalanceChangeSet(oldOBC, recalculatedTargetDate, "recalcOverdueTillDate-final");
             }
+            DebugFileLogger.logOverdueRecalcResult(hasChange, scheduleModel);
         }
 
         return hasChange;
@@ -914,13 +931,17 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     private boolean adjustOverduePrincipal(final LocalDate currentDate, final RepaymentPeriod currentInstallment,
             final Money overduePrincipal, final Money aggregatedOverDuePrincipal, final ProgressiveLoanInterestScheduleModel model,
             boolean prepayAttempt) {
+        DebugFileLogger.logAdjustOverdueEntry(currentDate, currentInstallment, overduePrincipal, aggregatedOverDuePrincipal, model);
         final LocalDate fromDate = currentInstallment.getFromDate();
         final LocalDate toDate = currentInstallment.getDueDate();
 
         if (!currentDate.equals(model.lastOverdueBalanceChange())) {
+            LocalDate positiveDate;
             if (model.lastOverdueBalanceChange() == null || currentInstallment.getFromDate().isAfter(model.lastOverdueBalanceChange())) {
+                positiveDate = fromDate;
                 addBalanceCorrection(model, fromDate, overduePrincipal);
             } else {
+                positiveDate = model.lastOverdueBalanceChange();
                 addBalanceCorrection(model, model.lastOverdueBalanceChange(), overduePrincipal);
             }
 
@@ -931,11 +952,16 @@ public final class ProgressiveEMICalculator implements EMICalculator {
                 } else {
                     lastOverdueBalanceChange = currentDate;
                 }
+                DebugFileLogger.logAdjustOverdueCorrections(positiveDate, overduePrincipal,
+                        lastOverdueBalanceChange, aggregatedOverDuePrincipal.negated(), lastOverdueBalanceChange);
                 addBalanceCorrection(model, lastOverdueBalanceChange, aggregatedOverDuePrincipal.negated());
+                LocalDate oldOBC = model.lastOverdueBalanceChange();
                 model.lastOverdueBalanceChange(lastOverdueBalanceChange);
+                DebugFileLogger.logLastOverdueBalanceChangeSet(oldOBC, lastOverdueBalanceChange, "adjustOverduePrincipal");
             }
             return true;
         }
+        DebugFileLogger.logAdjustOverdueSameDateGuard(currentDate);
         return false;
     }
 
@@ -1110,6 +1136,8 @@ public final class ProgressiveEMICalculator implements EMICalculator {
                     && adjustedEmi.isLessThan(repaymentPeriod.getPaidPrincipal().add(repaymentPeriod.getFixedInterest()))) {
                 adjustedEmi = repaymentPeriod.getPaidPrincipal().add(repaymentPeriod.getFixedInterest());
             }
+            DebugFileLogger.logLastUnpaidEMI(scheduleModel, tillDate, repaymentPeriod, totalDueInterest, totalEMI,
+                    totalDisbursedAmount, diff, adjustedEmi);
             repaymentPeriod.setEmi(adjustedEmi);
             if (repaymentPeriod.getEmi()
                     .isLessThan(repaymentPeriod.getTotalPaidAmount().minus(repaymentPeriod.getTotalCreditedAmount(), mc))) {
