@@ -331,16 +331,16 @@ public class RepaymentPeriod {
      * For early repayment/pay-off scenarios, returns paidPrincipal when it exceeds the calculated value.
      * <p>
      * For recalculation scenarios (e.g. backdated interest rate change after MIR prepayment), the EMI can be
-     * temporarily inflated by {@code calculateLastUnpaidRepaymentPeriodEMI()}, causing principal inflation.
-     * When the period was fully paid based on original EMI, return paid principal to prevent the inflated
-     * EMI from propagating incorrect outstanding amounts (see FINERACT-2421).
+     * temporarily inflated by {@code calculateLastUnpaidRepaymentPeriodEMI()}, causing principal inflation. When the
+     * period was fully paid based on original EMI, return paid principal to prevent the inflated EMI from propagating
+     * incorrect outstanding amounts (see FINERACT-2421).
      *
      * @return
      */
     public Money getDuePrincipal() {
         // Due principal might be the maximum paid if there is pay-off or early repayment
         return MathUtil.max(MathUtil
-                        .negativeToZero(getEmiPlusCreditedAmountsPlusFutureUnrecognizedInterest().minus(getDueInterest(), getMc()), getMc()),
+                .negativeToZero(getEmiPlusCreditedAmountsPlusFutureUnrecognizedInterest().minus(getDueInterest(), getMc()), getMc()),
                 getPaidPrincipal(), false);
     }
 

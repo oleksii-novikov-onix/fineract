@@ -20,8 +20,10 @@ package org.apache.fineract.portfolio.loanproduct.calc;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.apache.fineract.organisation.monetary.domain.Money;
@@ -36,6 +38,7 @@ import org.apache.fineract.portfolio.loanproduct.calc.data.RepaymentPeriod;
 public final class DebugFileLogger {
 
     private static final String LOG_DIR = "C:\\Users\\aleks\\Data\\projects\\mifos\\fineract2\\";
+    // private static final String LOG_DIR = "";
     private static volatile String currentLogFile;
 
     // Deduplication for calculateLastUnpaidEMI
@@ -43,8 +46,7 @@ public final class DebugFileLogger {
 
     private static final String OWN_CLASS_NAME = DebugFileLogger.class.getName();
 
-    private DebugFileLogger() {
-    }
+    private DebugFileLogger() {}
 
     private static String getLogFile() {
         return currentLogFile;
@@ -70,8 +72,8 @@ public final class DebugFileLogger {
             return;
         }
         String callerInfo = resolveCallerInfo();
-        try (PrintWriter pw = new PrintWriter(new FileWriter(logFile, true))) {
-            pw.printf("[%s] [%s] ", LocalDateTime.now().toLocalTime().withNano(0), callerInfo);
+        try (PrintWriter pw = new PrintWriter(new FileWriter(logFile, Charset.defaultCharset(), true))) {
+            pw.printf("[%s] [%s] ", LocalDateTime.now(ZoneId.systemDefault()).toLocalTime().withNano(0), callerInfo);
             pw.printf(format, args);
             pw.println();
         } catch (Exception e) {
@@ -85,8 +87,8 @@ public final class DebugFileLogger {
 
     public static void dumpModel(String context, ProgressiveLoanInterestScheduleModel model) {
         log("--- MODEL DUMP: %s ---", context);
-        log("  lastOverdueBalanceChange=%s totalDuePrincipal=%s totalPaidPrincipal=%s",
-                model.lastOverdueBalanceChange(), model.getTotalDuePrincipal(), model.getTotalPaidPrincipal());
+        log("  lastOverdueBalanceChange=%s totalDuePrincipal=%s totalPaidPrincipal=%s", model.lastOverdueBalanceChange(),
+                model.getTotalDuePrincipal(), model.getTotalPaidPrincipal());
         int idx = 1;
         for (RepaymentPeriod rp : model.repaymentPeriods()) {
             log("  P%d [%s -> %s]: EMI=%s origEMI=%s calcDueInterest=%s dueInterest=%s duePrincipal=%s paidP=%s paidI=%s outstandingP=%s outstandingBal=%s fullyPaid=%s",
@@ -95,11 +97,9 @@ public final class DebugFileLogger {
                     rp.getOutstandingLoanBalance(), rp.isFullyPaid());
             int ipIdx = 1;
             for (InterestPeriod ip : rp.getInterestPeriods()) {
-                log("    IP%d [%s -> %s]: balCorr=%s outBal=%s disb=%s calcDueInt=%s rateFactor=%s rateFactorTillDue=%s",
-                        ipIdx, ip.getFromDate(), ip.getDueDate(),
-                        ip.getBalanceCorrectionAmount(),
-                        ip.getOutstandingLoanBalance(), ip.getDisbursementAmount(),
-                        ip.getCalculatedDueInterest(), ip.getRateFactor(), ip.getRateFactorTillPeriodDueDate());
+                log("    IP%d [%s -> %s]: balCorr=%s outBal=%s disb=%s calcDueInt=%s rateFactor=%s rateFactorTillDue=%s", ipIdx,
+                        ip.getFromDate(), ip.getDueDate(), ip.getBalanceCorrectionAmount(), ip.getOutstandingLoanBalance(),
+                        ip.getDisbursementAmount(), ip.getCalculatedDueInterest(), ip.getRateFactor(), ip.getRateFactorTillPeriodDueDate());
                 ipIdx++;
             }
             idx++;
@@ -108,9 +108,8 @@ public final class DebugFileLogger {
     }
 
     public static void dumpPeriod(String context, int periodNum, RepaymentPeriod rp) {
-        log("  %s P%d: EMI=%s calcDueInt=%s dueInt=%s duePrin=%s paidP=%s paidI=%s outP=%s outBal=%s credited=%s fullyPaid=%s",
-                context, periodNum,
-                rp.getEmi(), rp.getCalculatedDueInterest(), rp.getDueInterest(), rp.getDuePrincipal(), rp.getPaidPrincipal(),
+        log("  %s P%d: EMI=%s calcDueInt=%s dueInt=%s duePrin=%s paidP=%s paidI=%s outP=%s outBal=%s credited=%s fullyPaid=%s", context,
+                periodNum, rp.getEmi(), rp.getCalculatedDueInterest(), rp.getDueInterest(), rp.getDuePrincipal(), rp.getPaidPrincipal(),
                 rp.getPaidInterest(), rp.getOutstandingPrincipal(), rp.getOutstandingLoanBalance(), rp.getTotalCreditedAmount(),
                 rp.isFullyPaid());
     }
@@ -119,56 +118,53 @@ public final class DebugFileLogger {
 
     public static void logOverdueRecalcEntry(LocalDate targetDate, ProgressiveLoanInterestScheduleModel model,
             List<RepaymentPeriod> overduePeriods) {
-        log(">> recalculateModelOverdueAmountsTillDate: targetDate=%s, lastOverdueBalanceChange=%s, overduePeriods=%d",
-                targetDate, model.lastOverdueBalanceChange(), overduePeriods.size());
+        log(">> recalculateModelOverdueAmountsTillDate: targetDate=%s, lastOverdueBalanceChange=%s, overduePeriods=%d", targetDate,
+                model.lastOverdueBalanceChange(), overduePeriods.size());
         for (int i = 0; i < overduePeriods.size(); i++) {
             RepaymentPeriod rp = overduePeriods.get(i);
-            log("   overdue[%d]: P%d [%s->%s] outstandingP=%s fullyPaid=%s",
-                    i, periodNum(model, rp.getFromDate()), rp.getFromDate(), rp.getDueDate(),
-                    rp.getOutstandingPrincipal(), rp.isFullyPaid());
+            log("   overdue[%d]: P%d [%s->%s] outstandingP=%s fullyPaid=%s", i, periodNum(model, rp.getFromDate()), rp.getFromDate(),
+                    rp.getDueDate(), rp.getOutstandingPrincipal(), rp.isFullyPaid());
         }
     }
 
-    public static void logOverdueLoopIteration(int loopIdx, RepaymentPeriod processingPeriod,
-            Money overDuePrincipal, Money aggregatedOverDuePrincipal, boolean skippedBecauseZero,
-            ProgressiveLoanInterestScheduleModel model) {
+    public static void logOverdueLoopIteration(int loopIdx, RepaymentPeriod processingPeriod, Money overDuePrincipal,
+            Money aggregatedOverDuePrincipal, boolean skippedBecauseZero, ProgressiveLoanInterestScheduleModel model) {
         int pNum = periodNum(model, processingPeriod.getFromDate());
-        log("   overdueLoop[%d]: processingPeriod=P%d [%s->%s], overDuePrincipal=%s, aggregated=%s, skippedBecauseZero=%s",
-                loopIdx, pNum, processingPeriod.getFromDate(), processingPeriod.getDueDate(),
-                overDuePrincipal, aggregatedOverDuePrincipal, skippedBecauseZero);
+        log("   overdueLoop[%d]: processingPeriod=P%d [%s->%s], overDuePrincipal=%s, aggregated=%s, skippedBecauseZero=%s", loopIdx, pNum,
+                processingPeriod.getFromDate(), processingPeriod.getDueDate(), overDuePrincipal, aggregatedOverDuePrincipal,
+                skippedBecauseZero);
     }
 
-    public static void logOverdueFinalAdjust(RepaymentPeriod currentPeriod, Money overDuePrincipal,
-            Money aggregatedOverDuePrincipal, boolean willExecute, ProgressiveLoanInterestScheduleModel model) {
+    public static void logOverdueFinalAdjust(RepaymentPeriod currentPeriod, Money overDuePrincipal, Money aggregatedOverDuePrincipal,
+            boolean willExecute, ProgressiveLoanInterestScheduleModel model) {
         int pNum = periodNum(model, currentPeriod.getFromDate());
-        log("   overdueFinalAdjust: currentPeriod=P%d [%s->%s], overDuePrincipal=%s, aggregated=%s, willExecute=%s",
-                pNum, currentPeriod.getFromDate(), currentPeriod.getDueDate(),
-                overDuePrincipal, aggregatedOverDuePrincipal, willExecute);
+        log("   overdueFinalAdjust: currentPeriod=P%d [%s->%s], overDuePrincipal=%s, aggregated=%s, willExecute=%s", pNum,
+                currentPeriod.getFromDate(), currentPeriod.getDueDate(), overDuePrincipal, aggregatedOverDuePrincipal, willExecute);
     }
 
     public static void logOverdueRecalcResult(boolean hasChange, ProgressiveLoanInterestScheduleModel model) {
-        log("<< recalculateModelOverdueAmountsTillDate: hasChange=%s, lastOverdueBalanceChange=%s",
-                hasChange, model.lastOverdueBalanceChange());
+        log("<< recalculateModelOverdueAmountsTillDate: hasChange=%s, lastOverdueBalanceChange=%s", hasChange,
+                model.lastOverdueBalanceChange());
     }
 
     // --- adjustOverduePrincipal logging ---
 
-    public static void logAdjustOverdueEntry(LocalDate currentDate, RepaymentPeriod installment,
-            Money overduePrincipal, Money aggregated, ProgressiveLoanInterestScheduleModel model) {
+    public static void logAdjustOverdueEntry(LocalDate currentDate, RepaymentPeriod installment, Money overduePrincipal, Money aggregated,
+            ProgressiveLoanInterestScheduleModel model) {
         int pNum = periodNum(model, installment.getFromDate());
         log("   >> adjustOverduePrincipal: currentDate=%s, installment=P%d [%s->%s], overduePrincipal=%s, aggregated=%s, lastOverdueBalanceChange=%s",
-                currentDate, pNum, installment.getFromDate(), installment.getDueDate(),
-                overduePrincipal, aggregated, model.lastOverdueBalanceChange());
+                currentDate, pNum, installment.getFromDate(), installment.getDueDate(), overduePrincipal, aggregated,
+                model.lastOverdueBalanceChange());
     }
 
     public static void logAdjustOverdueSameDateGuard(LocalDate currentDate) {
         log("   << adjustOverduePrincipal: BLOCKED by same-date guard (currentDate=%s == lastOverdueBalanceChange)", currentDate);
     }
 
-    public static void logAdjustOverdueCorrections(LocalDate positiveDate, Money positiveAmount,
-            LocalDate negativeDate, Money negativeAmount, LocalDate newLastOverdueBalanceChange) {
-        log("      adjustOverduePrincipal corrections: +%s at %s, %s at %s, newLastOverdueBalanceChange=%s",
-                positiveAmount, positiveDate, negativeAmount, negativeDate, newLastOverdueBalanceChange);
+    public static void logAdjustOverdueCorrections(LocalDate positiveDate, Money positiveAmount, LocalDate negativeDate,
+            Money negativeAmount, LocalDate newLastOverdueBalanceChange) {
+        log("      adjustOverduePrincipal corrections: +%s at %s, %s at %s, newLastOverdueBalanceChange=%s", positiveAmount, positiveDate,
+                negativeAmount, negativeDate, newLastOverdueBalanceChange);
     }
 
     // --- addBalanceCorrection logging ---
@@ -180,17 +176,15 @@ public final class DebugFileLogger {
         log("   >> addBalanceCorrection: date=%s, amount=%s", date, amount);
     }
 
-    public static void logBalanceCorrectionIPHit(LocalDate date, Money amount, int periodNum,
-            InterestPeriod ip, Money balCorrBefore) {
-        log("      balanceCorrection applied: date=%s amount=%s -> P%d IP[%s->%s], balCorrBefore=%s, balCorrAfter=%s",
-                date, amount, periodNum, ip.getFromDate(), ip.getDueDate(),
-                balCorrBefore, ip.getBalanceCorrectionAmount());
+    public static void logBalanceCorrectionIPHit(LocalDate date, Money amount, int periodNum, InterestPeriod ip, Money balCorrBefore) {
+        log("      balanceCorrection applied: date=%s amount=%s -> P%d IP[%s->%s], balCorrBefore=%s, balCorrAfter=%s", date, amount,
+                periodNum, ip.getFromDate(), ip.getDueDate(), balCorrBefore, ip.getBalanceCorrectionAmount());
     }
 
     // --- payPrincipal logging ---
 
-    public static void logPayPrincipalEntry(LocalDate fromDate, LocalDate dueDate, LocalDate txDate,
-            Money amount, ProgressiveLoanInterestScheduleModel model) {
+    public static void logPayPrincipalEntry(LocalDate fromDate, LocalDate dueDate, LocalDate txDate, Money amount,
+            ProgressiveLoanInterestScheduleModel model) {
         int pNum = periodNum(model, fromDate);
         log("   >> payPrincipal: P%d [%s->%s], txDate=%s, amount=%s", pNum, fromDate, dueDate, txDate, amount);
     }
@@ -203,20 +197,18 @@ public final class DebugFileLogger {
 
     // --- calculateLastUnpaidRepaymentPeriodEMI logging (with dedup) ---
 
-    public static void logLastUnpaidEMI(ProgressiveLoanInterestScheduleModel model, LocalDate tillDate,
-            RepaymentPeriod lastUnpaidPeriod, Money totalDueInterest, Money totalEMI,
-            Money totalDisbursed, Money diff, Money adjustedEmi) {
-        String signature = String.format("%s|%s|%s|%s|%s|%s",
-                tillDate, lastUnpaidPeriod.getFromDate(), totalDueInterest, totalEMI, diff, adjustedEmi);
+    public static void logLastUnpaidEMI(ProgressiveLoanInterestScheduleModel model, LocalDate tillDate, RepaymentPeriod lastUnpaidPeriod,
+            Money totalDueInterest, Money totalEMI, Money totalDisbursed, Money diff, Money adjustedEmi) {
+        String signature = String.format("%s|%s|%s|%s|%s|%s", tillDate, lastUnpaidPeriod.getFromDate(), totalDueInterest, totalEMI, diff,
+                adjustedEmi);
         if (signature.equals(lastEmiLogSignature)) {
             return; // skip duplicate
         }
         lastEmiLogSignature = signature;
         int pNum = periodNum(model, lastUnpaidPeriod.getFromDate());
-        log("   calculateLastUnpaidEMI: tillDate=%s, lastUnpaidPeriod=P%d [%s->%s]",
-                tillDate, pNum, lastUnpaidPeriod.getFromDate(), lastUnpaidPeriod.getDueDate());
-        log("     totalDueInterest=%s, totalEMI=%s, totalDisbursed=%s, diff=%s",
-                totalDueInterest, totalEMI, totalDisbursed, diff);
+        log("   calculateLastUnpaidEMI: tillDate=%s, lastUnpaidPeriod=P%d [%s->%s]", tillDate, pNum, lastUnpaidPeriod.getFromDate(),
+                lastUnpaidPeriod.getDueDate());
+        log("     totalDueInterest=%s, totalEMI=%s, totalDisbursed=%s, diff=%s", totalDueInterest, totalEMI, totalDisbursed, diff);
         log("     oldEMI=%s -> adjustedEMI=%s", lastUnpaidPeriod.getEmi(), adjustedEmi);
     }
 
@@ -226,8 +218,8 @@ public final class DebugFileLogger {
         if (additionalAmount != null && additionalAmount.isZero()) {
             return; // skip zero-amount noise
         }
-        log("      IP[%s->%s].addBalanceCorrectionAmount: before=%s + %s = %s",
-                ip.getFromDate(), ip.getDueDate(), before, additionalAmount, ip.getBalanceCorrectionAmount());
+        log("      IP[%s->%s].addBalanceCorrectionAmount: before=%s + %s = %s", ip.getFromDate(), ip.getDueDate(), before, additionalAmount,
+                ip.getBalanceCorrectionAmount());
     }
 
     // --- lastOverdueBalanceChange tracking ---
@@ -276,12 +268,15 @@ public final class DebugFileLogger {
     // --- Init/Clear ---
 
     public static void clear() {
+        if (LOG_DIR.isEmpty()) {
+            return;
+        }
         lastEmiLogSignature = null;
         if (currentLogFile == null) {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String timestamp = LocalDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             currentLogFile = LOG_DIR + "fineract-2421-debug_" + timestamp + ".log";
-            try (PrintWriter pw = new PrintWriter(new FileWriter(currentLogFile, false))) {
-                pw.printf("=== FINERACT-2421 Debug Trace started at %s ===%n", LocalDateTime.now());
+            try (PrintWriter pw = new PrintWriter(new FileWriter(currentLogFile, Charset.defaultCharset(), false))) {
+                pw.printf("=== FINERACT-2421 Debug Trace started at %s ===%n", LocalDateTime.now(ZoneId.systemDefault()));
             } catch (Exception e) {
                 // silently ignore
             }
