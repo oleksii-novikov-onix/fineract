@@ -714,12 +714,6 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     @Override
     public boolean recalculateModelOverdueAmountsTillDate(final ProgressiveLoanInterestScheduleModel scheduleModel,
             final LocalDate targetDate, boolean prepayAttempt) {
-        return recalculateModelOverdueAmountsTillDate(scheduleModel, targetDate, prepayAttempt, false);
-    }
-
-    @Override
-    public boolean recalculateModelOverdueAmountsTillDate(final ProgressiveLoanInterestScheduleModel scheduleModel,
-            final LocalDate targetDate, boolean prepayAttempt, boolean allowOverdueCleanup) {
         boolean hasChange = false;
         LocalDate recalculatedTargetDate = DateUtils.isAfter(targetDate, scheduleModel.getLastRepaymentPeriod().getDueDate())
                 ? scheduleModel.getLastRepaymentPeriod().getDueDate()
@@ -806,8 +800,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
                     break;
                 }
             }
-            if (allowOverdueCleanup //
-                    && allPeriodsEssentiallyPaid //
+            if (allPeriodsEssentiallyPaid //
                     && scheduleModel.lastOverdueAmount() != null //
                     && scheduleModel.lastOverdueAmount().isGreaterThanZero() //
                     && scheduleModel.lastOverdueBalanceChange() != null) {

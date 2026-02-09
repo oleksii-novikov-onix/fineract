@@ -37,8 +37,8 @@ import org.apache.fineract.portfolio.loanproduct.calc.data.RepaymentPeriod;
  */
 public final class DebugFileLogger {
 
-    private static final String LOG_DIR = "C:\\Users\\aleks\\Data\\projects\\mifos\\fineract2\\";
-    // private static final String LOG_DIR = "";
+    // private static final String LOG_DIR = "C:\\Users\\aleks\\Data\\projects\\mifos\\fineract2\\";
+    private static final String LOG_DIR = "";
     private static volatile String currentLogFile;
 
     // Deduplication for calculateLastUnpaidEMI

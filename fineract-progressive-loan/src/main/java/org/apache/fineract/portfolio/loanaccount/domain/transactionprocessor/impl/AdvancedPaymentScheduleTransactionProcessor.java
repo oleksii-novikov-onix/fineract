@@ -292,7 +292,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             }
         }
         DebugFileLogger.logReprocessFinalRecalc(targetDate);
-        recalculateInterestForDate(targetDate, ctx, true, true);
+        recalculateInterestForDate(targetDate, ctx);
         DebugFileLogger.dumpModel("AFTER FINAL recalcInterest", ctx.getModel());
         DebugFileLogger.logReprocessEnd();
         DebugFileLogger.resetEmiDedup();
@@ -512,7 +512,7 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
             // When a repayment resolves all overdue periods, the overdue balance corrections need
             // to be reversed. This can only happen AFTER payPrincipal has updated paidAmounts.
             // Skip during reprocessing — reprocessProgressiveLoanTransactions has its own final recalc.
-            recalculateInterestForDate(loanTransaction.getTransactionDate(), progressiveTransactionCtx, true, true);
+            recalculateInterestForDate(loanTransaction.getTransactionDate(), progressiveTransactionCtx);
             // After overdue cleanup, installment due amounts may have decreased (e.g., duePrincipal
             // 41.67 → 41.62). Re-check obligations for installments that were not yet met but now
             // have zero outstanding, so that obligationsMetOnDate is set correctly.
@@ -1873,15 +1873,6 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
     }
 
     public void recalculateInterestForDate(LocalDate targetDate, ProgressiveTransactionCtx ctx) {
-        recalculateInterestForDate(targetDate, ctx, true, false);
-    }
-
-    public void recalculateInterestForDate(LocalDate targetDate, ProgressiveTransactionCtx ctx, boolean updateInstallments) {
-        recalculateInterestForDate(targetDate, ctx, updateInstallments, false);
-    }
-
-    public void recalculateInterestForDate(LocalDate targetDate, ProgressiveTransactionCtx ctx, boolean updateInstallments,
-            boolean allowOverdueCleanup) {
         if (ctx.getInstallments() != null && !ctx.getInstallments().isEmpty()) {
             Loan loan = ctx.getInstallments().getFirst().getLoan();
             if (isInterestRecalculationSupported(ctx, loan) && !loan.isNpa()
@@ -1889,14 +1880,14 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
                 LocalDate lastOBCBefore = ctx.getModel().lastOverdueBalanceChange();
                 boolean modelHasUpdates = emiCalculator.recalculateModelOverdueAmountsTillDate(ctx.getModel(), targetDate,
-                        ctx.isPrepayAttempt(), allowOverdueCleanup);
+                        ctx.isPrepayAttempt());
                 String caller = Thread.currentThread().getStackTrace().length > 3
                         ? Thread.currentThread().getStackTrace()[2].getMethodName()
                         : "unknown";
                 DebugFileLogger.logRecalcInterestForDate(targetDate, modelHasUpdates, caller);
                 DebugFileLogger.logLastOverdueBalanceChangeSet(lastOBCBefore, ctx.getModel().lastOverdueBalanceChange(),
                         "recalcInterestForDate");
-                if (modelHasUpdates && updateInstallments) {
+                if (modelHasUpdates) {
                     updateInstallmentsPrincipalAndInterestByModel(ctx);
                 }
             }
