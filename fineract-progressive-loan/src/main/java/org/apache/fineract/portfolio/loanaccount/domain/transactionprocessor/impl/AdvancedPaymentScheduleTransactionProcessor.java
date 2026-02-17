@@ -112,6 +112,7 @@ import org.apache.fineract.portfolio.loanaccount.service.LoanChargeService;
 import org.apache.fineract.portfolio.loanaccount.service.schedule.LoanScheduleComponent;
 import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.EqualAmortizationValues;
+import org.apache.fineract.portfolio.loanproduct.calc.data.InterestPeriod;
 import org.apache.fineract.portfolio.loanproduct.calc.data.OutstandingDetails;
 import org.apache.fineract.portfolio.loanproduct.calc.data.PeriodDueDetails;
 import org.apache.fineract.portfolio.loanproduct.calc.data.ProgressiveLoanInterestScheduleModel;
@@ -3432,6 +3433,12 @@ public class AdvancedPaymentScheduleTransactionProcessor extends AbstractLoanRep
 
         lastPeriod.setDueDate(transactionDate);
         lastPeriod.getInterestPeriods().removeIf(interestPeriod -> !interestPeriod.getFromDate().isBefore(transactionDate));
+        if (!lastPeriod.getInterestPeriods().isEmpty()) {
+            final InterestPeriod lastIp = lastPeriod.getInterestPeriods().getLast();
+            if (lastIp.getDueDate().isAfter(transactionDate)) {
+                lastIp.setDueDate(transactionDate);
+            }
+        }
 
         final BigDecimal totalPrincipal = periodsToRemove.stream().map(rp -> rp.getDuePrincipal().getAmount()).reduce(BigDecimal.ZERO,
                 BigDecimal::add);
