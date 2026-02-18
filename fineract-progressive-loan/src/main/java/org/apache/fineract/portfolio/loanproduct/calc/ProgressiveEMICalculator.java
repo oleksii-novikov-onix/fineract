@@ -746,9 +746,7 @@ public final class ProgressiveEMICalculator implements EMICalculator {
                 aggregatedOverDuePrincipal = aggregatedOverDuePrincipal.add(overDuePrincipal);
             }
 
-            // Skip final adjust when all overdue amounts are zero to avoid unnecessary IP splits
-            if (!aggregatedOverDuePrincipal.isZero()
-                    && (!currentPeriod.equals(lastPeriod) || !recalculatedTargetDate.isAfter(lastPeriod.getDueDate()))) {
+            if (!currentPeriod.equals(lastPeriod) || !recalculatedTargetDate.isAfter(lastPeriod.getDueDate())) {
                 final boolean currentChanges = adjustOverduePrincipal(recalculatedTargetDate, currentPeriod, overDuePrincipal,
                         aggregatedOverDuePrincipal, scheduleModel, prepayAttempt);
                 hasChange = hasChange || currentChanges;
