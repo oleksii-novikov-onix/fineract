@@ -25,11 +25,11 @@ Feature: Reporting
     And Admin adds buy down fee adjustment of buy down fee transaction made on "01 January 2024" with "AUTOPAY" payment type to the loan on "10 January 2024" with "25" EUR transaction amount
     When Admin runs inline COB job for Loan
     # Verify Buy Down Fee (type 40) + Disbursement on day 1
-    # Buy Down Fee: interest_portion = 50 (INTEREST income type), report positive group → +50.0
+    # Buy Down Fee (type 40): all portion fields are NULL (deferred income), allocations = 0
     Then Transaction Summary Report for date "01 January 2024" has the following data:
       | TransactionDate | Product                                                  | TransactionType_Name | PaymentType_Name | chargetype | Reversed | Allocation_Type          | Chargeoff_ReasonCode | Transaction_Amount |
       | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Fees                     |                      | 0.0                |
-      | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Interest                 |                      | 50.0               |
+      | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Interest                 |                      | 0.0                |
       | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Penalty                  |                      | 0.0                |
       | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Principal                |                      | 0.0                |
       | 2024-01-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee         | AUTOPAY          |            | 0        | Unallocated Credit (UNC) |                      | 0.0                |
@@ -49,13 +49,13 @@ Feature: Reporting
       | 2024-01-31      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Amortization |                  |            | 0        | Principal                |                      | 0.0                |
       | 2024-01-31      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Amortization |                  |            | 0        | Unallocated Credit (UNC) |                      | 0.0                |
     # Verify Buy Down Fee Adjustment (type 41) + Buy Down Fee Amortization Adjustment (type 43) + Accrual
-    # Adjustment: interest_portion = 10, report negative group → -10.0
-    # Amortization Adjustment: over-amortized by 6.63 (10.40 - 17.03), negative group → -6.63
+    # Adjustment (type 41): all portion fields are NULL (deferred income reversal), allocations = 0
+    # Amortization Adjustment (type 43): interest_portion = 6.63, negative group → -6.63
     Then Transaction Summary Report for date "01 February 2024" has the following data:
       | TransactionDate | Product                                                  | TransactionType_Name                 | PaymentType_Name | chargetype | Reversed | Allocation_Type          | Chargeoff_ReasonCode | Transaction_Amount |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Apply Charges                        |                  |            | 0        | Interest                 |                      |                    |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Fees                     |                      | 0.0                |
-      | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Interest                 |                      | -10.0              |
+      | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Interest                 |                      | 0.0                |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Penalty                  |                      | 0.0                |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Principal                |                      | 0.0                |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Unallocated Credit (UNC) |                      | 0.0                |
@@ -69,7 +69,7 @@ Feature: Reporting
       | TransactionDate | Product                                                  | TransactionType_Name                 | PaymentType_Name | chargetype | Reversed | Allocation_Type          | Chargeoff_ReasonCode | Transaction_Amount | Asset_owner_id | From_asset_owner_id |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Apply Charges                        |                  |            | 0        | Interest                 |                      |                    |                |                     |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Fees                     |                      | 0.0                |                |                     |
-      | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Interest                 |                      | -10.0              |                |                     |
+      | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Interest                 |                      | 0.0                |                |                     |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Penalty                  |                      | 0.0                |                |                     |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Principal                |                      | 0.0                |                |                     |
       | 2024-02-01      | LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES | Buy Down Fee Adjustment              | AUTOPAY          |            | 0        | Unallocated Credit (UNC) |                      | 0.0                |                |                     |

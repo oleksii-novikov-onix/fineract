@@ -49,8 +49,7 @@ slt_except_charge_adj_and_accrual AS (
         e.owner_id,
         m.charged_off_on_date,
         t.transaction_date,
-        m.charge_off_reason_cv_id,
-        l.buy_down_fee_income_type
+        m.charge_off_reason_cv_id
     FROM m_loan_transaction t
         JOIN m_loan m ON m.id = t.loan_id
         JOIN m_product_loan l ON l.id = m.product_id
@@ -115,8 +114,7 @@ rlt_except_charge_adj_and_accrual AS (
         e.owner_id,
         m.charged_off_on_date,
         t.transaction_date,
-        m.charge_off_reason_cv_id,
-        l.buy_down_fee_income_type
+        m.charge_off_reason_cv_id
     FROM m_loan_transaction t
         JOIN m_loan m ON m.id = t.loan_id
         JOIN m_product_loan l ON l.id = m.product_id
@@ -370,8 +368,6 @@ FROM (
             false AS reversal_indicator,
             'Interest' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'INTEREST' THEN t.amount ELSE 0 END
                 WHEN t.interest_portion_derived is null THEN 0
                 ELSE t.interest_portion_derived
             END AS amount,
@@ -398,8 +394,6 @@ FROM (
             false AS reversal_indicator,
             'Fees' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'FEE' THEN t.amount ELSE 0 END
                 WHEN t.fee_charges_portion_derived is null THEN 0
                 ELSE t.fee_charges_portion_derived
             END AS amount,
@@ -1026,8 +1020,6 @@ FROM (
             true AS reversal_indicator,
             'Interest' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'INTEREST' THEN t.amount ELSE 0 END
                 WHEN t.interest_portion_derived is null THEN 0
                 ELSE t.interest_portion_derived
             END AS amount,
@@ -1054,8 +1046,6 @@ FROM (
             true AS reversal_indicator,
             'Fees' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'FEE' THEN t.amount ELSE 0 END
                 WHEN t.fee_charges_portion_derived is null THEN 0
                 ELSE t.fee_charges_portion_derived
             END AS amount,
@@ -1606,8 +1596,7 @@ slt_except_charge_adj_and_accrual AS (
         e.owner_id,
         m.charged_off_on_date,
         t.transaction_date,
-        m.charge_off_reason_cv_id,
-        l.buy_down_fee_income_type
+        m.charge_off_reason_cv_id
     FROM m_loan_transaction t
         JOIN m_loan m ON m.id = t.loan_id
         JOIN m_product_loan l ON l.id = m.product_id
@@ -1672,8 +1661,7 @@ rlt_except_charge_adj_and_accrual AS (
         e.owner_id,
         m.charged_off_on_date,
         t.transaction_date,
-        m.charge_off_reason_cv_id,
-        l.buy_down_fee_income_type
+        m.charge_off_reason_cv_id
     FROM m_loan_transaction t
         JOIN m_loan m ON m.id = t.loan_id
         JOIN m_product_loan l ON l.id = m.product_id
@@ -1928,8 +1916,6 @@ FROM (
             false AS reversal_indicator,
             'Interest' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'INTEREST' THEN t.amount ELSE 0 END
                 WHEN t.interest_portion_derived is null THEN 0
                 ELSE t.interest_portion_derived
             END AS amount,
@@ -1956,8 +1942,6 @@ FROM (
             false AS reversal_indicator,
             'Fees' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'FEE' THEN t.amount ELSE 0 END
                 WHEN t.fee_charges_portion_derived is null THEN 0
                 ELSE t.fee_charges_portion_derived
             END AS amount,
@@ -2584,8 +2568,6 @@ FROM (
             true AS reversal_indicator,
             'Interest' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'INTEREST' THEN t.amount ELSE 0 END
                 WHEN t.interest_portion_derived is null THEN 0
                 ELSE t.interest_portion_derived
             END AS amount,
@@ -2612,8 +2594,6 @@ FROM (
             true AS reversal_indicator,
             'Fees' AS Allocation_Type,
             CASE
-                WHEN t.transaction_type_enum IN (40, 41) THEN
-                    CASE WHEN t.buy_down_fee_income_type = 'FEE' THEN t.amount ELSE 0 END
                 WHEN t.fee_charges_portion_derived is null THEN 0
                 ELSE t.fee_charges_portion_derived
             END AS amount,
@@ -3204,7 +3184,7 @@ ORDER BY 1,2,3,4,5,6,7,8,9,10,11"/>
                 '' as chargetype,
                 false AS reversal_indicator,
                 'Interest' AS Allocation_Type,
-                case when t.transaction_type_enum in (40, 41) then (case when l.buy_down_fee_income_type = 'INTEREST' then t.amount else 0 end) when t.interest_portion_derived is null then 0 else t.interest_portion_derived end AS amount
+                case when t.interest_portion_derived is null then 0 else t.interest_portion_derived end AS amount
               FROM
                 m_loan_transaction t
                 JOIN m_loan m ON m.id = t.loan_id
@@ -3224,7 +3204,7 @@ ORDER BY 1,2,3,4,5,6,7,8,9,10,11"/>
                 '' as chargetype,
                 false AS reversal_indicator,
                 'Fees' AS Allocation_Type,
-                case when t.transaction_type_enum in (40, 41) then (case when l.buy_down_fee_income_type = 'FEE' then t.amount else 0 end) when t.fee_charges_portion_derived is null then 0 else t.fee_charges_portion_derived end as amount
+                case when t.fee_charges_portion_derived is null then 0 else t.fee_charges_portion_derived end as amount
               FROM
                 m_loan_transaction t
                 JOIN m_loan m ON m.id = t.loan_id
@@ -3484,7 +3464,7 @@ ORDER BY 1,2,3,4,5,6,7,8,9,10,11"/>
                 '' as chargetype,
                 true AS reversal_indicator,
                 'Interest' AS Allocation_Type,
-                case when t.transaction_type_enum in (40, 41) then (case when l.buy_down_fee_income_type = 'INTEREST' then t.amount else 0 end) when t.interest_portion_derived is null then 0 else t.interest_portion_derived end AS amount
+                case when t.interest_portion_derived is null then 0 else t.interest_portion_derived end AS amount
               FROM
                 m_loan_transaction t
                 JOIN m_loan m ON m.id = t.loan_id
@@ -3504,7 +3484,7 @@ ORDER BY 1,2,3,4,5,6,7,8,9,10,11"/>
                 '' as chargetype,
                 true AS reversal_indicator,
                 'Fees' AS Allocation_Type,
-                case when t.transaction_type_enum in (40, 41) then (case when l.buy_down_fee_income_type = 'FEE' then t.amount else 0 end) when t.fee_charges_portion_derived is null then 0 else t.fee_charges_portion_derived end as amount
+                case when t.fee_charges_portion_derived is null then 0 else t.fee_charges_portion_derived end as amount
               FROM
                 m_loan_transaction t
                 JOIN m_loan m ON m.id = t.loan_id
