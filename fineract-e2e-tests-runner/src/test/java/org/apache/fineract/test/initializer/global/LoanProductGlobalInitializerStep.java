@@ -2937,6 +2937,30 @@ public class LoanProductGlobalInitializerStep implements FineractGlobalInitializ
         TestContext.INSTANCE.set(TestContextKey.DEFAULT_LOAN_PRODUCT_CREATE_RESPONSE_LP2_PROGRESSIVE_ADV_PYMNT_BUYDOWN_FEES,
                 responseLoanProductsRequestLP2ProgressiveAdvPaymentBuyDownFees);
 
+        // LP2 with progressive loan schedule + horizontal + interest EMI + 360/30
+        // + interest recalculation, buy down fees enabled, FEE income type
+        final String name114fee = DefaultLoanProduct.LP2_PROGRESSIVE_ADVANCED_PAYMENT_ALLOCATION_BUYDOWN_FEES_FEE_INCOME.getName();
+        final PostLoanProductsRequest loanProductsRequestLP2ProgressiveAdvPaymentBuyDownFeesFeeIncome = loanProductsRequestFactory
+                .defaultLoanProductsRequestLP2BuyDownFeesFeeIncome()//
+                .name(name114fee)//
+                .transactionProcessingStrategyCode(ADVANCED_PAYMENT_ALLOCATION.getValue())//
+                .loanScheduleType("PROGRESSIVE") //
+                .isInterestRecalculationEnabled(true)//
+                .preClosureInterestCalculationStrategy(1)//
+                .rescheduleStrategyMethod(4)//
+                .interestRecalculationCompoundingMethod(0)//
+                .recalculationRestFrequencyType(2)//
+                .recalculationRestFrequencyInterval(1)//
+                .paymentAllocation(List.of(//
+                        createPaymentAllocation("DEFAULT", "NEXT_INSTALLMENT"), //
+                        createPaymentAllocation("GOODWILL_CREDIT", "LAST_INSTALLMENT"), //
+                        createPaymentAllocation("MERCHANT_ISSUED_REFUND", "REAMORTIZATION"), //
+                        createPaymentAllocation("PAYOUT_REFUND", "NEXT_INSTALLMENT")));//
+        final PostLoanProductsResponse responseLoanProductsRequestLP2ProgressiveAdvPaymentBuyDownFeesFeeIncome = createLoanProductIdempotent(
+                loanProductsRequestLP2ProgressiveAdvPaymentBuyDownFeesFeeIncome);
+        TestContext.INSTANCE.set(TestContextKey.DEFAULT_LOAN_PRODUCT_CREATE_RESPONSE_LP2_PROGRESSIVE_ADV_PYMNT_BUYDOWN_FEES_FEE_INCOME,
+                responseLoanProductsRequestLP2ProgressiveAdvPaymentBuyDownFeesFeeIncome);
+
         // LP2 + interest recalculation + zero-interest chargeOff behaviour + progressive loan schedule + horizontal
         // (LP2_ADV_PYMNT_360_30_INTEREST_RECALC_AUTO_DOWNPAYMENT_ZERO_INTEREST_CHARGE_OFF_ACCRUAL_ACTIVITY)
         final String name115 = DefaultLoanProduct.LP2_ADV_PYMNT_360_30_INTEREST_RECALC_AUTO_DOWNPAYMENT_ZERO_INTEREST_CHARGE_OFF_ACCRUAL_ACTIVITY
