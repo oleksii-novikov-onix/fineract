@@ -138,3 +138,37 @@ Feature: WorkingCapitalLoanProduct
       | wcp_field_name_incorrect_value |
       | 565465                         |
       | 0                              |
+
+  Scenario: Verify Working capital Loan Product create with Cash based accounting
+    When Admin creates a new Working Capital Loan Product with accounting rule "CASH_BASED"
+    Then Admin verifies Working Capital Loan Product has accounting rule "CASH_BASED"
+    Then Admin deletes Working Capital Loan Product and verifies GL account mappings are cleaned up
+
+  Scenario: Verify Working capital Loan Product create with accounting rule None
+    When Admin creates a new Working Capital Loan Product with accounting rule "NONE"
+    Then Admin verifies Working Capital Loan Product has accounting rule "NONE"
+    Then Admin deletes a Working Capital Loan Product
+
+  Scenario: Verify Working capital Loan Product create with Cash based accounting fails when required GL accounts are missing
+    Then Admin failed to create a new Working Capital Loan Product with Cash based accounting and missing required GL accounts
+
+  Scenario: Verify Working capital Loan Product update accounting rule from None to Cash based
+    When Admin creates a new Working Capital Loan Product with accounting rule "NONE"
+    When Admin updates Working Capital Loan Product accounting rule from None to Cash based
+    Then Admin verifies Working Capital Loan Product has accounting rule "CASH_BASED"
+    Then Admin deletes Working Capital Loan Product and verifies GL account mappings are cleaned up
+
+  Scenario: Verify Working capital Loan Product update accounting rule from Cash based to None
+    When Admin creates a new Working Capital Loan Product with accounting rule "CASH_BASED"
+    When Admin updates Working Capital Loan Product accounting rule from Cash based to None
+    Then Admin verifies Working Capital Loan Product has accounting rule "NONE"
+    Then Admin deletes a Working Capital Loan Product
+
+  Scenario: Verify Working capital Loan Product update GL account mappings on existing Cash based product
+    When Admin creates a new Working Capital Loan Product with accounting rule "CASH_BASED"
+    When Admin updates GL account mappings on existing Cash based Working Capital Loan Product
+    Then Admin verifies Working Capital Loan Product has accounting rule "CASH_BASED"
+    Then Admin deletes a Working Capital Loan Product
+
+  Scenario: Verify Working capital Loan Product template has accounting options
+    Then Admin verifies Working Capital Loan Product template has accounting options

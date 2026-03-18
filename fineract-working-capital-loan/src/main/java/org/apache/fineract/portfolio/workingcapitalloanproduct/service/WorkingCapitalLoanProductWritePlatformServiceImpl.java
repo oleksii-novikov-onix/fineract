@@ -26,9 +26,11 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
@@ -40,6 +42,7 @@ import org.apache.fineract.portfolio.fund.exception.FundNotFoundException;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WCAccountingRuleType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAdvancedPaymentAllocationsJsonParser;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProduct;
@@ -70,6 +73,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
     private final FundRepository fundRepository;
     private final DelinquencyBucketRepository delinquencyBucketRepository;
     private final WorkingCapitalAdvancedPaymentAllocationsJsonParser advancedPaymentAllocationsJsonParser;
+    private final WCProductAccountingMappingService wcAccountingMappingService;
 
     @Transactional
     @Override
@@ -88,6 +92,9 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final WorkingCapitalLoanProduct product = createProductFromCommand(fund, delinquencyBucket, command, paymentAllocationRules);
 
         this.repository.saveAndFlush(product);
+
+        // Create GL account mappings if accounting is enabled
+        this.wcAccountingMappingService.createAccountMapping(product.getId(), command);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -131,6 +138,28 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
 
         final Map<String, Object> changes = updateProductFields(product, command);
 
+        // Handle accounting rule update
+        if (command.parameterExists(WorkingCapitalLoanProductConstants.accountingRuleParamName)) {
+            final String newAccountingRuleValue = command
+                    .stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.accountingRuleParamName);
+            if (newAccountingRuleValue == null || newAccountingRuleValue.isBlank()) {
+                throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
+                        "validation.msg.WORKINGCAPITALLOANPRODUCT.accountingRule.cannot.be.blank",
+                        "The parameter `accountingRule` is mandatory.", WorkingCapitalLoanProductConstants.accountingRuleParamName)));
+            }
+            final WCAccountingRuleType newAccountingRule = WCAccountingRuleType.valueOf(newAccountingRuleValue);
+            final boolean accountingRuleChanged = newAccountingRule != product.getAccountingRule();
+
+            if (accountingRuleChanged) {
+                product.setAccountingRule(newAccountingRule);
+                changes.put(WorkingCapitalLoanProductConstants.accountingRuleParamName, newAccountingRuleValue);
+            }
+
+            final Map<String, Object> accountingMappingChanges = this.wcAccountingMappingService.updateAccountMapping(productId, command,
+                    accountingRuleChanged, newAccountingRule);
+            changes.putAll(accountingMappingChanges);
+        }
+
         if (!changes.isEmpty()) {
             this.repository.saveAndFlush(product);
         }
@@ -152,6 +181,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
             throw new WorkingCapitalLoanProductCannotBeDeletedException(productId);
         }
 
+        this.wcAccountingMappingService.deleteAccountMapping(productId);
         this.repository.delete(product);
 
         return new CommandProcessingResultBuilder() //
@@ -322,11 +352,17 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final WorkingCapitalLoanProductMinMaxConstraints minMaxConstraints = new WorkingCapitalLoanProductMinMaxConstraints(minPrincipal,
                 maxPrincipal, minPeriodPaymentRate, maxPeriodPaymentRate);
 
+        // Accounting
+        final String accountingRuleValue = command.parameterExists(WorkingCapitalLoanProductConstants.accountingRuleParamName)
+                ? command.stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.accountingRuleParamName)
+                : WCAccountingRuleType.NONE.name();
+        final WCAccountingRuleType accountingRule = WCAccountingRuleType.valueOf(accountingRuleValue);
+
         // Configurable attributes
         final WorkingCapitalLoanProductConfigurableAttributes configurableAttributes = createConfigurableAttributesFromCommand(command);
 
         return new WorkingCapitalLoanProduct(name, shortName, externalId, fund, delinquencyBucket, startDate, closeDate, description,
-                currency, relatedDetail, minMaxConstraints, paymentAllocationRules, configurableAttributes);
+                accountingRule, currency, relatedDetail, minMaxConstraints, paymentAllocationRules, configurableAttributes);
     }
 
     private WorkingCapitalLoanProductConfigurableAttributes createConfigurableAttributesFromCommand(final JsonCommand command) {

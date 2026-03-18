@@ -45,6 +45,7 @@ import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WCAccountingRuleType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAdvancedPaymentAllocationsJsonParser;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.exception.WorkingCapitalLoanProductDuplicateExternalIdException;
@@ -81,7 +82,25 @@ public class WorkingCapitalLoanProductDataValidator {
             WorkingCapitalLoanProductConstants.periodPaymentRateParamName, WorkingCapitalLoanProductConstants.maxPeriodPaymentRateParamName,
             WorkingCapitalLoanProductConstants.discountParamName, WorkingCapitalLoanProductConstants.repaymentEveryParamName,
             WorkingCapitalLoanProductConstants.repaymentFrequencyTypeParamName,
-            WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName));
+            WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName, WorkingCapitalLoanProductConstants.accountingRuleParamName,
+            WorkingCapitalLoanProductConstants.fundSourceAccountIdParamName,
+            WorkingCapitalLoanProductConstants.loanPortfolioAccountIdParamName,
+            WorkingCapitalLoanProductConstants.transfersInSuspenseAccountIdParamName,
+            WorkingCapitalLoanProductConstants.interestOnLoanAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromFeeAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromPenaltyAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromRecoveryAccountIdParamName,
+            WorkingCapitalLoanProductConstants.writeOffAccountIdParamName,
+            WorkingCapitalLoanProductConstants.overpaymentLiabilityAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromChargeOffInterestAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromChargeOffFeesAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromChargeOffPenaltyAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditInterestAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditFeesAccountIdParamName,
+            WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditPenaltyAccountIdParamName,
+            WorkingCapitalLoanProductConstants.goodwillCreditAccountIdParamName,
+            WorkingCapitalLoanProductConstants.chargeOffExpenseAccountIdParamName,
+            WorkingCapitalLoanProductConstants.chargeOffFraudExpenseAccountIdParamName));
 
     public void validateForCreate(final String json) {
         if (StringUtils.isBlank(json)) {
@@ -129,6 +148,9 @@ public class WorkingCapitalLoanProductDataValidator {
         if (this.fromApiJsonHelper.parameterExists(WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName, element)) {
             validateConfigurableAttributes(element, baseDataValidator);
         }
+
+        // Validate accounting
+        validateAccountingRule(element, baseDataValidator, true);
 
         // Throw validation errors if any exist
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
@@ -193,6 +215,9 @@ public class WorkingCapitalLoanProductDataValidator {
 
         // Validate min/max constraints if present
         validateMinMaxRanges(element, baseDataValidator, principal);
+
+        // Validate accounting if present
+        validateAccountingRule(element, baseDataValidator, false);
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
@@ -471,6 +496,63 @@ public class WorkingCapitalLoanProductDataValidator {
             if (closeDate != null && DateUtils.isBefore(closeDate, startDate)) {
                 baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.closeDateParamName)
                         .failWithCode("must.be.after.startDate", closeDate.toString(), startDate.toString());
+            }
+        }
+    }
+
+    private void validateAccountingRule(final JsonElement element, final DataValidatorBuilder baseDataValidator, final boolean required) {
+        if (required || this.fromApiJsonHelper.parameterExists(WorkingCapitalLoanProductConstants.accountingRuleParamName, element)) {
+            final String accountingRuleValue = this.fromApiJsonHelper
+                    .extractStringNamed(WorkingCapitalLoanProductConstants.accountingRuleParamName, element);
+            baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.accountingRuleParamName).value(accountingRuleValue)
+                    .notBlank().isOneOfTheseStringValues(List.of(WCAccountingRuleType.NONE.name(), WCAccountingRuleType.CASH_BASED.name()));
+
+            if (WCAccountingRuleType.CASH_BASED.name().equals(accountingRuleValue)) {
+                // Required GL accounts for Cash based
+                final Long fundSourceAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.fundSourceAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.fundSourceAccountIdParamName)
+                        .value(fundSourceAccountId).notNull().integerGreaterThanZero();
+
+                final Long loanPortfolioAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.loanPortfolioAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.loanPortfolioAccountIdParamName)
+                        .value(loanPortfolioAccountId).notNull().integerGreaterThanZero();
+
+                final Long transfersInSuspenseAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.transfersInSuspenseAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.transfersInSuspenseAccountIdParamName)
+                        .value(transfersInSuspenseAccountId).notNull().integerGreaterThanZero();
+
+                final Long interestOnLoanAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.interestOnLoanAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.interestOnLoanAccountIdParamName)
+                        .value(interestOnLoanAccountId).notNull().integerGreaterThanZero();
+
+                final Long incomeFromFeeAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.incomeFromFeeAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.incomeFromFeeAccountIdParamName)
+                        .value(incomeFromFeeAccountId).notNull().integerGreaterThanZero();
+
+                final Long incomeFromPenaltyAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.incomeFromPenaltyAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.incomeFromPenaltyAccountIdParamName)
+                        .value(incomeFromPenaltyAccountId).notNull().integerGreaterThanZero();
+
+                final Long incomeFromRecoveryAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.incomeFromRecoveryAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.incomeFromRecoveryAccountIdParamName)
+                        .value(incomeFromRecoveryAccountId).notNull().integerGreaterThanZero();
+
+                final Long writeOffAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.writeOffAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.writeOffAccountIdParamName).value(writeOffAccountId)
+                        .notNull().integerGreaterThanZero();
+
+                final Long overpaymentLiabilityAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.overpaymentLiabilityAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.overpaymentLiabilityAccountIdParamName)
+                        .value(overpaymentLiabilityAccountId).notNull().integerGreaterThanZero();
             }
         }
     }

@@ -22,15 +22,13 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
-  <include relativeToChangelogFile="true" file="parts/0001_loan_product.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0002_wc_loan_schema.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0003_working_capital_loan_cob.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0004_extend_working_capital_loan_entity.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0005_alter_wc_loan_add_columns.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0006_wc_loan_disbursement_details.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0007_drop_flat_percentage_amount.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0008_delinquency_for_working_capital_loans.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0009_wc_loan_amortization_model.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0010_loan_account_permissions.xml"/>
-  <include relativeToChangelogFile="true" file="parts/0011_wc_loan_product_accounting.xml"/>
+
+  <changeSet author="fineract" id="wc-loan-product-accounting-1">
+    <addColumn tableName="m_wc_loan_product">
+      <column name="accounting_type" type="VARCHAR(20)" defaultValue="NONE">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
 </databaseChangeLog>
