@@ -24,12 +24,12 @@ import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WCAccounti
 
 public interface WCProductAccountingMappingService {
 
-    void createAccountMapping(final Long wcLoanProductId, final JsonCommand command);
+    void createAccountMapping(Long wcLoanProductId, JsonCommand command);
 
-    Map<String, Object> updateAccountMapping(final Long wcLoanProductId, final JsonCommand command, final boolean accountingRuleChanged,
-            final WCAccountingRuleType accountingRuleType);
+    Map<String, Object> updateAccountMapping(Long wcLoanProductId, JsonCommand command, boolean accountingRuleChanged,
+            WCAccountingRuleType accountingRuleType);
 
-    void deleteAccountMapping(final Long wcLoanProductId);
+    void deleteAccountMapping(Long wcLoanProductId);
 
-    Map<String, Object> fetchAccountMappingDetails(final Long wcLoanProductId, final WCAccountingRuleType accountingRuleType);
+    Map<String, Object> fetchAccountMappingDetails(Long wcLoanProductId, WCAccountingRuleType accountingRuleType);
 }
