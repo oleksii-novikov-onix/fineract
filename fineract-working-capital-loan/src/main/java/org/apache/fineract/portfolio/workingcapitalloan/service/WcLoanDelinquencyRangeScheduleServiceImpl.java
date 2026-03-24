@@ -186,4 +186,24 @@ public class WcLoanDelinquencyRangeScheduleServiceImpl implements WcLoanDelinque
         return MathUtil.percentageOf(principal, minimumPayment, MathContext.DECIMAL128);
     }
 
+    @Override
+    public void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd) {
+        long pauseDays = java.time.temporal.ChronoUnit.DAYS.between(pauseStart, pauseEnd);
+        List<WcLoanDelinquencyRangeSchedule> periods = repository.findByLoanIdOrderByPeriodNumberAsc(loan.getId());
+        for (WcLoanDelinquencyRangeSchedule period : periods) {
+            if (period.getMinPaymentCriteriaMet() != null) {
+                continue;
+            }
+            if (!period.getToDate().isBefore(pauseStart)) {
+                period.setToDate(period.getToDate().plusDays(pauseDays));
+            }
+            if (period.getFromDate().isAfter(pauseStart)) {
+                period.setFromDate(period.getFromDate().plusDays(pauseDays));
+            }
+        }
+        repository.saveAll(periods);
+        log.debug("Extended delinquency range schedule periods for WC loan {} by {} days due to pause [{} - {}]", loan.getId(), pauseDays,
+                pauseStart, pauseEnd);
+    }
+
 }

@@ -18,26 +18,11 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import org.apache.fineract.portfolio.workingcapitalloan.data.WcLoanDelinquencyRangeScheduleData;
-import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 
-public interface WcLoanDelinquencyRangeScheduleService {
+public interface WcLoanDelinquencyActionWriteService {
 
-    void generateInitialPeriod(WorkingCapitalLoan loan);
-
-    void generateNextPeriodIfNeeded(WorkingCapitalLoan loan, LocalDate businessDate);
-
-    boolean hasSchedule(Long loanId);
-
-    void applyRepayment(Long loanId, LocalDate transactionDate, BigDecimal amount);
-
-    void evaluateExpiredPeriods(WorkingCapitalLoan loan, LocalDate businessDate);
-
-    List<WcLoanDelinquencyRangeScheduleData> retrieveRangeSchedule(Long loanId);
-
-    void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd);
+    CommandProcessingResult createDelinquencyAction(Long wcLoanId, JsonCommand command);
 
 }
