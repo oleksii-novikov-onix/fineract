@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.portfolio.workingcapitalloan.data.WcLoanDelinquencyRangeScheduleData;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WcLoanDelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 
 public interface WcLoanDelinquencyRangeScheduleService {
@@ -39,5 +40,7 @@ public interface WcLoanDelinquencyRangeScheduleService {
     List<WcLoanDelinquencyRangeScheduleData> retrieveRangeSchedule(Long loanId);
 
     void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd);
+
+    void rescheduleMinimumPayment(WorkingCapitalLoan loan, WcLoanDelinquencyAction rescheduleAction);
 
 }

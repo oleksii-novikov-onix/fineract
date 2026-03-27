@@ -26,16 +26,20 @@ import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyFrequencyType;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyMinimumPaymentPeriodAndRule;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyMinimumPaymentType;
 import org.apache.fineract.portfolio.workingcapitalloan.data.WcLoanDelinquencyRangeScheduleData;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WcLoanDelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WcLoanDelinquencyRangeSchedule;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
 import org.apache.fineract.portfolio.workingcapitalloan.mapper.WcLoanDelinquencyRangeScheduleMapper;
+import org.apache.fineract.portfolio.workingcapitalloan.repository.WcLoanDelinquencyActionRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WcLoanDelinquencyRangeScheduleRepository;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProduct;
 import org.springframework.stereotype.Service;
@@ -46,6 +50,7 @@ import org.springframework.stereotype.Service;
 public class WcLoanDelinquencyRangeScheduleServiceImpl implements WcLoanDelinquencyRangeScheduleService {
 
     private final WcLoanDelinquencyRangeScheduleRepository repository;
+    private final WcLoanDelinquencyActionRepository actionRepository;
     private final WcLoanDelinquencyRangeScheduleMapper mapper;
 
     @Override
@@ -62,7 +67,7 @@ public class WcLoanDelinquencyRangeScheduleServiceImpl implements WcLoanDelinque
             return;
         }
         LocalDate toDate = calculateToDate(fromDate, rule.getFrequency(), rule.getFrequencyType());
-        BigDecimal expectedAmount = calculateExpectedAmount(loan, rule);
+        BigDecimal expectedAmount = calculateExpectedAmount(loan, rule, null);
 
         WcLoanDelinquencyRangeSchedule period = new WcLoanDelinquencyRangeSchedule();
         period.setLoan(loan);
@@ -85,23 +90,28 @@ public class WcLoanDelinquencyRangeScheduleServiceImpl implements WcLoanDelinque
 
     @Override
     public void generateNextPeriodIfNeeded(WorkingCapitalLoan loan, LocalDate businessDate) {
-        DelinquencyMinimumPaymentPeriodAndRule rule = getMinimumPaymentRule(loan);
+        final DelinquencyMinimumPaymentPeriodAndRule rule = getMinimumPaymentRule(loan);
         if (rule == null) {
             return;
         }
 
-        Optional<WcLoanDelinquencyRangeSchedule> latestPeriodOpt = repository.findTopByLoanIdOrderByPeriodNumberDesc(loan.getId());
+        final Optional<WcLoanDelinquencyRangeSchedule> latestPeriodOpt = repository.findTopByLoanIdOrderByPeriodNumberDesc(loan.getId());
         if (latestPeriodOpt.isEmpty()) {
             return;
         }
 
+        final Optional<WcLoanDelinquencyAction> latestReschedule = findLatestRescheduleAction(loan.getId());
+        final Integer effectiveFrequency = latestReschedule.map(WcLoanDelinquencyAction::getFrequency).orElse(rule.getFrequency());
+        final DelinquencyFrequencyType effectiveFreqType = latestReschedule.map(WcLoanDelinquencyAction::getFrequencyType)
+                .orElse(rule.getFrequencyType());
+
         WcLoanDelinquencyRangeSchedule latestPeriod = latestPeriodOpt.get();
         while (!latestPeriod.getToDate().isAfter(businessDate)) {
-            LocalDate newFromDate = latestPeriod.getToDate().plusDays(1);
-            LocalDate newToDate = calculateToDate(newFromDate, rule.getFrequency(), rule.getFrequencyType());
-            BigDecimal expectedAmount = calculateExpectedAmount(loan, rule);
+            final LocalDate newFromDate = latestPeriod.getToDate().plusDays(1);
+            final LocalDate newToDate = calculateToDate(newFromDate, effectiveFrequency, effectiveFreqType);
+            final BigDecimal expectedAmount = calculateExpectedAmount(loan, rule, latestReschedule.orElse(null));
 
-            WcLoanDelinquencyRangeSchedule nextPeriod = new WcLoanDelinquencyRangeSchedule();
+            final WcLoanDelinquencyRangeSchedule nextPeriod = new WcLoanDelinquencyRangeSchedule();
             nextPeriod.setLoan(loan);
             nextPeriod.setPeriodNumber(latestPeriod.getPeriodNumber() + 1);
             nextPeriod.setFromDate(newFromDate);
@@ -171,23 +181,101 @@ public class WcLoanDelinquencyRangeScheduleServiceImpl implements WcLoanDelinque
         };
     }
 
-    private BigDecimal calculateExpectedAmount(WorkingCapitalLoan loan, DelinquencyMinimumPaymentPeriodAndRule rule) {
-        BigDecimal minimumPayment = rule.getMinimumPayment();
+    private BigDecimal calculateExpectedAmount(final WorkingCapitalLoan loan, final DelinquencyMinimumPaymentPeriodAndRule rule,
+            final WcLoanDelinquencyAction rescheduleOverride) {
+        final BigDecimal principal = loan.getApprovedPrincipal();
+        if (principal == null) {
+            return BigDecimal.ZERO;
+        }
+        if (rescheduleOverride != null) {
+            return MathUtil.percentageOf(principal, rescheduleOverride.getMinimumPayment(), MathContext.DECIMAL128);
+        }
+        final BigDecimal minimumPayment = rule.getMinimumPayment();
         if (minimumPayment == null) {
             return BigDecimal.ZERO;
         }
         if (DelinquencyMinimumPaymentType.FLAT.equals(rule.getMinimumPaymentType())) {
             return minimumPayment;
         }
-        BigDecimal principal = loan.getApprovedPrincipal();
-        if (principal == null) {
-            return BigDecimal.ZERO;
-        }
         return MathUtil.percentageOf(principal, minimumPayment, MathContext.DECIMAL128);
     }
 
+    private Optional<WcLoanDelinquencyAction> findLatestRescheduleAction(final Long loanId) {
+        final List<WcLoanDelinquencyAction> actions = actionRepository.findByWcLoanIdOrderById(loanId);
+        return actions.stream().filter(a -> DelinquencyAction.RESCHEDULE.equals(a.getAction())).reduce((first, second) -> second);
+    }
+
     @Override
-    public void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd) {
+    public void rescheduleMinimumPayment(final WorkingCapitalLoan loan, final WcLoanDelinquencyAction rescheduleAction) {
+        final LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        final BigDecimal newExpectedAmount = calculateExpectedAmount(loan, null, rescheduleAction);
+        final Integer newFrequency = rescheduleAction.getFrequency();
+        final DelinquencyFrequencyType newFreqType = rescheduleAction.getFrequencyType();
+
+        final List<WcLoanDelinquencyRangeSchedule> periods = repository.findByLoanIdOrderByPeriodNumberAsc(loan.getId());
+
+        WcLoanDelinquencyRangeSchedule currentPeriod = null;
+        final List<WcLoanDelinquencyRangeSchedule> futurePeriods = new java.util.ArrayList<>();
+
+        for (final WcLoanDelinquencyRangeSchedule period : periods) {
+            if (period.getMinPaymentCriteriaMet() != null) {
+                continue;
+            }
+            final boolean isCurrent = !period.getFromDate().isAfter(businessDate) && !period.getToDate().isBefore(businessDate);
+            final boolean isFuture = period.getFromDate().isAfter(businessDate);
+
+            if (isCurrent) {
+                currentPeriod = period;
+                period.setExpectedAmount(newExpectedAmount);
+                period.setOutstandingAmount(newExpectedAmount.subtract(period.getPaidAmount()).max(BigDecimal.ZERO));
+            } else if (isFuture) {
+                futurePeriods.add(period);
+            }
+        }
+
+        repository.deleteAll(futurePeriods);
+        repository.flush();
+
+        if (currentPeriod != null) {
+            repository.saveAndFlush(currentPeriod);
+            regenerateFuturePeriods(loan, currentPeriod, newExpectedAmount, newFrequency, newFreqType);
+        }
+
+        evaluateExpiredPeriods(loan, businessDate);
+
+        log.debug("Rescheduled delinquency range schedule for WC loan {}: new minimumPayment={}%, frequency={} {}", loan.getId(),
+                rescheduleAction.getMinimumPayment(), newFrequency, newFreqType);
+    }
+
+    private void regenerateFuturePeriods(final WorkingCapitalLoan loan, final WcLoanDelinquencyRangeSchedule currentPeriod,
+            final BigDecimal expectedAmount, final Integer frequency, final DelinquencyFrequencyType frequencyType) {
+        final LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        int periodNumber = currentPeriod.getPeriodNumber();
+        LocalDate fromDate = currentPeriod.getToDate().plusDays(1);
+
+        while (!fromDate.isAfter(businessDate)) {
+            final LocalDate toDate = calculateToDate(fromDate, frequency, frequencyType);
+            periodNumber++;
+
+            final WcLoanDelinquencyRangeSchedule period = new WcLoanDelinquencyRangeSchedule();
+            period.setLoan(loan);
+            period.setPeriodNumber(periodNumber);
+            period.setFromDate(fromDate);
+            period.setToDate(toDate);
+            period.setExpectedAmount(expectedAmount);
+            period.setPaidAmount(BigDecimal.ZERO);
+            period.setOutstandingAmount(expectedAmount);
+            period.setMinPaymentCriteriaMet(null);
+
+            repository.saveAndFlush(period);
+            log.debug("Regenerated delinquency range schedule period {} for WC loan {}", periodNumber, loan.getId());
+
+            fromDate = toDate.plusDays(1);
+        }
+    }
+
+    @Override
+    public void extendPeriodsForPause(final WorkingCapitalLoan loan, final LocalDate pauseStart, final LocalDate pauseEnd) {
         long pauseDays = java.time.temporal.ChronoUnit.DAYS.between(pauseStart, pauseEnd);
         List<WcLoanDelinquencyRangeSchedule> periods = repository.findByLoanIdOrderByPeriodNumberAsc(loan.getId());
         for (WcLoanDelinquencyRangeSchedule period : periods) {

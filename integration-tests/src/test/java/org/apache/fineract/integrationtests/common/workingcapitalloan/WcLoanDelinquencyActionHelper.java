@@ -20,12 +20,13 @@ package org.apache.fineract.integrationtests.common.workingcapitalloan;
 
 import static org.apache.fineract.client.feign.util.FeignCalls.ok;
 
-import com.google.gson.JsonObject;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.client.models.CommandProcessingResult;
+import org.apache.fineract.client.models.PostWcLoanDelinquencyActionRequest;
 import org.apache.fineract.client.models.WcLoanDelinquencyActionData;
 import org.apache.fineract.integrationtests.common.FineractFeignClientHelper;
 
@@ -36,12 +37,29 @@ public final class WcLoanDelinquencyActionHelper {
 
     private WcLoanDelinquencyActionHelper() {}
 
+    public static CommandProcessingResult createPauseAction(final Long loanId, final LocalDate startDate, final LocalDate endDate) {
+        final PostWcLoanDelinquencyActionRequest request = buildPauseRequest("pause", startDate, endDate);
+        log.info("Creating PAUSE delinquency action for loan {} startDate={} endDate={}", loanId, startDate, endDate);
+        return ok(() -> FineractFeignClientHelper.getFineractFeignClient().workingCapitalLoanDelinquencyActions()
+                .createDelinquencyAction(loanId, request));
+    }
+
+    public static CommandProcessingResult createRescheduleAction(final Long loanId, final BigDecimal minimumPayment, final int frequency,
+            final String frequencyType) {
+        final PostWcLoanDelinquencyActionRequest request = new PostWcLoanDelinquencyActionRequest().action("reschedule")
+                .minimumPayment(minimumPayment).frequency(frequency).frequencyType(frequencyType).locale("en");
+        log.info("Creating RESCHEDULE delinquency action for loan {} minimumPayment={} frequency={} {}", loanId, minimumPayment, frequency,
+                frequencyType);
+        return ok(() -> FineractFeignClientHelper.getFineractFeignClient().workingCapitalLoanDelinquencyActions()
+                .createDelinquencyAction(loanId, request));
+    }
+
     public static CommandProcessingResult createDelinquencyAction(final Long loanId, final String action, final LocalDate startDate,
             final LocalDate endDate) {
-        final String body = buildActionJson(action, startDate, endDate);
-        log.info("Creating delinquency action for loan {} body={}", loanId, body);
+        final PostWcLoanDelinquencyActionRequest request = buildPauseRequest(action, startDate, endDate);
+        log.info("Creating delinquency action for loan {} action={} startDate={} endDate={}", loanId, action, startDate, endDate);
         return ok(() -> FineractFeignClientHelper.getFineractFeignClient().workingCapitalLoanDelinquencyActions()
-                .createDelinquencyAction(loanId, body));
+                .createDelinquencyAction(loanId, request));
     }
 
     public static List<WcLoanDelinquencyActionData> retrieveDelinquencyActions(final Long loanId) {
@@ -67,13 +85,9 @@ public final class WcLoanDelinquencyActionHelper {
         });
     }
 
-    private static String buildActionJson(final String action, final LocalDate startDate, final LocalDate endDate) {
-        final JsonObject json = new JsonObject();
-        json.addProperty("action", action);
-        json.addProperty("startDate", startDate.format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
-        json.addProperty("endDate", endDate.format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
-        json.addProperty("dateFormat", DATE_FORMAT);
-        json.addProperty("locale", "en");
-        return json.toString();
+    private static PostWcLoanDelinquencyActionRequest buildPauseRequest(final String action, final LocalDate startDate,
+            final LocalDate endDate) {
+        return new PostWcLoanDelinquencyActionRequest().action(action).startDate(startDate.format(DateTimeFormatter.ofPattern(DATE_FORMAT)))
+                .endDate(endDate.format(DateTimeFormatter.ofPattern(DATE_FORMAT))).dateFormat(DATE_FORMAT).locale("en");
     }
 }

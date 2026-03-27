@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.apache.fineract.client.models.CommandProcessingResult;
 import org.apache.fineract.client.models.DelinquencyRangeRequest;
 import org.apache.fineract.client.models.PostDelinquencyBucketResponse;
 import org.apache.fineract.client.models.PostDelinquencyRangeResponse;
+import org.apache.fineract.client.models.PostWcLoanDelinquencyActionRequest;
 import org.apache.fineract.client.models.WcLoanDelinquencyActionData;
 import org.apache.fineract.client.models.WcLoanDelinquencyRangeScheduleData;
 import org.apache.fineract.integrationtests.common.ClientHelper;
@@ -218,14 +220,14 @@ public class WcLoanDelinquencyActionIntegrationTest {
         final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault()).minusDays(5);
         WcLoanDelinquencyActionHelper.activateLoan(loanId, disbursementDate);
 
-        // when - send pause without endDate (build JSON manually)
-        final String body = "{\"action\":\"pause\",\"startDate\":\"" + disbursementDate
-                + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}";
+        // when - send pause without endDate
+        final PostWcLoanDelinquencyActionRequest request = new PostWcLoanDelinquencyActionRequest().action("pause")
+                .startDate(disbursementDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))).dateFormat("yyyy-MM-dd").locale("en");
 
         // then - should fail with 400
         CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
                 () -> FeignCalls.ok(() -> FineractFeignClientHelper.getFineractFeignClient().workingCapitalLoanDelinquencyActions()
-                        .createDelinquencyAction(loanId, body)));
+                        .createDelinquencyAction(loanId, request)));
         assertEquals(400, exception.getStatus());
         log.info("Expected 400 for missing endDate: {}", exception.getMessage());
     }

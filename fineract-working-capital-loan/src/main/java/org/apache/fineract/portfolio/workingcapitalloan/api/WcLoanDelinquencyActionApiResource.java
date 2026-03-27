@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,13 +60,14 @@ public class WcLoanDelinquencyActionApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create Delinquency Pause Action", description = "Creates a delinquency pause action for a Working Capital loan, extending the active delinquency range period and shifting future periods by the pause duration.")
+    @Operation(summary = "Create Delinquency Action", description = "Creates a delinquency action (pause or reschedule) for a Working Capital loan.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = WcLoanDelinquencyActionApiResourceSwagger.PostWcLoanDelinquencyActionRequest.class)))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class))),
             @ApiResponse(responseCode = "400", description = "Bad Request"),
             @ApiResponse(responseCode = "404", description = "Working Capital Loan not found") })
     public CommandProcessingResult createDelinquencyAction(@PathParam("loanId") @Parameter(description = "loanId") final Long loanId,
-            final String apiRequestBodyAsJson) {
+            @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
         final CommandWrapper commandRequest = new CommandWrapperBuilder() //
                 .createWcLoanDelinquencyAction(loanId) //

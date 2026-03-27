@@ -44,6 +44,7 @@ import org.apache.fineract.client.models.DeleteWorkingCapitalLoansLoanIdResponse
 import org.apache.fineract.client.models.GetDisbursementDetail;
 import org.apache.fineract.client.models.GetWorkingCapitalLoansLoanIdResponse;
 import org.apache.fineract.client.models.PostClientsResponse;
+import org.apache.fineract.client.models.PostWorkingCapitalLoanProductsResponse;
 import org.apache.fineract.client.models.PostWorkingCapitalLoansLoanIdRequest;
 import org.apache.fineract.client.models.PostWorkingCapitalLoansLoanIdResponse;
 import org.apache.fineract.client.models.PostWorkingCapitalLoansRequest;
@@ -634,6 +635,7 @@ public class WorkingCapitalProductLoanAccountStepDef extends AbstractStepDef {
         final PostWorkingCapitalLoansResponse response = ok(
                 () -> fineractClient.workingCapitalLoans().submitWorkingCapitalLoanApplication(loansRequest));
         testContext().set(TestContextKey.LOAN_CREATE_RESPONSE, response);
+        trackLoanIdIfEnabled(response.getLoanId());
         log.info("Working Capital Loan created with ID: {}", response.getLoanId());
     }
 
@@ -702,7 +704,20 @@ public class WorkingCapitalProductLoanAccountStepDef extends AbstractStepDef {
         return clientResponse.getClientId();
     }
 
+    @SuppressWarnings("unchecked")
+    private void trackLoanIdIfEnabled(final Long loanId) {
+        final List<Long> trackedIds = testContext().get(TestContextKey.WC_LOAN_IDS);
+        if (trackedIds != null) {
+            trackedIds.add(loanId);
+        }
+    }
+
     private Long resolveLoanProductId(final String loanProductName) {
+        if ("WCLP_DELINQUENCY".equals(loanProductName)) {
+            final PostWorkingCapitalLoanProductsResponse response = testContext()
+                    .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
+            return response.getResourceId();
+        }
         final DefaultWorkingCapitalLoanProduct product = DefaultWorkingCapitalLoanProduct.valueOf(loanProductName);
         return workingCapitalLoanProductResolver.resolve(product);
     }

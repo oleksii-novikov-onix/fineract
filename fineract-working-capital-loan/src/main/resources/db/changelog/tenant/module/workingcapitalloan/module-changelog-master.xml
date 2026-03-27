@@ -36,4 +36,5 @@
   <include relativeToChangelogFile="true" file="parts/0012_wc_loan_disbursement_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/0013_delinquency_range_schedule.xml"/>
   <include relativeToChangelogFile="true" file="parts/0014_wc_loan_delinquency_action.xml"/>
+  <include relativeToChangelogFile="true" file="parts/0015_wc_loan_delinquency_action_reschedule.xml"/>
 </databaseChangeLog>

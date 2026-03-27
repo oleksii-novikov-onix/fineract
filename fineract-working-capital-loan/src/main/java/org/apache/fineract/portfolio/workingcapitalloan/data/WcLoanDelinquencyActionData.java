@@ -18,11 +18,13 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyFrequencyType;
 
 @AllArgsConstructor
 @Getter
@@ -33,5 +35,8 @@ public class WcLoanDelinquencyActionData {
     private DelinquencyAction action;
     private LocalDate startDate;
     private LocalDate endDate;
+    private BigDecimal minimumPayment;
+    private Integer frequency;
+    private DelinquencyFrequencyType frequencyType;
 
 }

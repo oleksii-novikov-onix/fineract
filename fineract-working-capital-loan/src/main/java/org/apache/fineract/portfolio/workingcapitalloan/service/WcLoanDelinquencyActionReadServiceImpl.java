@@ -39,7 +39,8 @@ public class WcLoanDelinquencyActionReadServiceImpl implements WcLoanDelinquency
     }
 
     private WcLoanDelinquencyActionData toData(final WcLoanDelinquencyAction action) {
-        return new WcLoanDelinquencyActionData(action.getId(), action.getAction(), action.getStartDate(), action.getEndDate());
+        return new WcLoanDelinquencyActionData(action.getId(), action.getAction(), action.getStartDate(), action.getEndDate(),
+                action.getMinimumPayment(), action.getFrequency(), action.getFrequencyType());
     }
 
 }

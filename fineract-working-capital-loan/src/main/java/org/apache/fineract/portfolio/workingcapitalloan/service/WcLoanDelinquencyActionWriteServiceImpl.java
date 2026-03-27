@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WcLoanDelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanNotFoundException;
@@ -57,7 +58,11 @@ public class WcLoanDelinquencyActionWriteServiceImpl implements WcLoanDelinquenc
         final WcLoanDelinquencyAction saved = actionRepository.saveAndFlush(action);
         log.debug("Created WC loan delinquency action {} for loan {}", action.getAction(), wcLoanId);
 
-        rangeScheduleService.extendPeriodsForPause(wcLoan, action.getStartDate(), action.getEndDate());
+        if (DelinquencyAction.PAUSE.equals(action.getAction())) {
+            rangeScheduleService.extendPeriodsForPause(wcLoan, action.getStartDate(), action.getEndDate());
+        } else if (DelinquencyAction.RESCHEDULE.equals(action.getAction())) {
+            rangeScheduleService.rescheduleMinimumPayment(wcLoan, action);
+        }
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //

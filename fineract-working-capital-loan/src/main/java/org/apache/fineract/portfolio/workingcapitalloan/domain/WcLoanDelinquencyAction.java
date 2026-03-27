@@ -26,12 +26,14 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyFrequencyType;
 
 @Getter
 @Setter
@@ -51,7 +53,17 @@ public class WcLoanDelinquencyAction extends AbstractAuditableWithUTCDateTimeCus
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "end_date", nullable = false)
+    @Column(name = "end_date")
     private LocalDate endDate;
+
+    @Column(name = "minimum_payment", scale = 6, precision = 19)
+    private BigDecimal minimumPayment;
+
+    @Column(name = "frequency")
+    private Integer frequency;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "frequency_type")
+    private DelinquencyFrequencyType frequencyType;
 
 }
