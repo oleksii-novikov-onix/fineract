@@ -65,6 +65,15 @@ public enum WorkingCapitalLoanPeriodFrequencyType implements ApiFacingEnum<Worki
         return null;
     }
 
+    public long toDays(int amount) {
+        return switch (this) {
+            case DAYS -> amount;
+            case WEEKS -> (long) amount * 7;
+            case MONTHS -> (long) amount * 30;
+            case YEARS -> (long) amount * 365;
+        };
+    }
+
     public StringEnumOptionData toStringEnumOptionData() {
         return new StringEnumOptionData(name(), getCode(), name());
     }

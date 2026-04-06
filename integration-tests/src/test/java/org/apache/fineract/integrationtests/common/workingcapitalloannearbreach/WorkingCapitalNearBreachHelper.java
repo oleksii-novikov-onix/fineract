@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.integrationtests.common.workingcapitalloanbreach;
+package org.apache.fineract.integrationtests.common.workingcapitalloannearbreach;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,77 +24,71 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.gson.JsonObject;
 import java.math.BigDecimal;
 import org.apache.fineract.client.feign.ObjectMapperFactory;
-import org.apache.fineract.client.feign.services.WorkingCapitalBreachApi;
+import org.apache.fineract.client.feign.services.WorkingCapitalNearBreachApi;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
 import org.apache.fineract.client.feign.util.FeignCalls;
 import org.apache.fineract.client.models.CommandProcessingResult;
-import org.apache.fineract.client.models.WorkingCapitalBreachData;
-import org.apache.fineract.client.models.WorkingCapitalBreachRequest;
-import org.apache.fineract.client.models.WorkingCapitalBreachTemplateResponse;
+import org.apache.fineract.client.models.WorkingCapitalNearBreachData;
+import org.apache.fineract.client.models.WorkingCapitalNearBreachRequest;
 import org.apache.fineract.integrationtests.common.FineractFeignClientHelper;
 
-public class WorkingCapitalBreachHelper {
+public class WorkingCapitalNearBreachHelper {
 
     private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.getShared();
     private static final ObjectMapper RESPONSE_OBJECT_MAPPER = ObjectMapperFactory.getShared().copy()
             .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
-    private static WorkingCapitalBreachApi api() {
-        return FineractFeignClientHelper.getFineractFeignClient().workingCapitalBreaches();
+    private static WorkingCapitalNearBreachApi api() {
+        return FineractFeignClientHelper.getFineractFeignClient().workingCapitalNearBreaches();
     }
 
     public Long create(final JsonObject body) {
-        final WorkingCapitalBreachRequest request = fromJson(body, WorkingCapitalBreachRequest.class);
-        final CommandProcessingResult response = FeignCalls.ok(() -> api().createWorkingCapitalBreach(request));
+        final WorkingCapitalNearBreachRequest request = fromJson(body, WorkingCapitalNearBreachRequest.class);
+        final CommandProcessingResult response = FeignCalls.ok(() -> api().createWorkingCapitalNearBreach(request));
         return response.getResourceId();
     }
 
     public Long update(final Long breachId, final JsonObject body) {
-        final WorkingCapitalBreachRequest request = fromJson(body, WorkingCapitalBreachRequest.class);
-        final CommandProcessingResult response = FeignCalls.ok(() -> api().updateWorkingCapitalBreach(breachId, request));
+        final WorkingCapitalNearBreachRequest request = fromJson(body, WorkingCapitalNearBreachRequest.class);
+        final CommandProcessingResult response = FeignCalls.ok(() -> api().updateWorkingCapitalNearBreach(breachId, request));
         return response.getResourceId();
     }
 
     public Long delete(final Long breachId) {
-        final CommandProcessingResult response = FeignCalls.ok(() -> api().deleteWorkingCapitalBreach(breachId));
+        final CommandProcessingResult response = FeignCalls.ok(() -> api().deleteWorkingCapitalNearBreach(breachId));
         return response.getResourceId();
     }
 
-    public String retrieveTemplateRaw() {
-        final WorkingCapitalBreachTemplateResponse response = FeignCalls.ok(() -> api().retrieveWorkingCapitalBreachTemplate());
-        return toJson(response);
-    }
-
     public String retrieveAllRaw() {
-        final java.util.List<WorkingCapitalBreachData> response = FeignCalls.ok(() -> api().retrieveAllWorkingCapitalBreaches());
+        final java.util.List<WorkingCapitalNearBreachData> response = FeignCalls.ok(() -> api().retrieveAllWorkingCapitalNearBreaches());
         return toJson(response);
     }
 
     public String retrieveOneRaw(final Long breachId) {
-        final WorkingCapitalBreachData response = FeignCalls.ok(() -> api().retrieveWorkingCapitalBreach(breachId));
+        final WorkingCapitalNearBreachData response = FeignCalls.ok(() -> api().retrieveWorkingCapitalNearBreach(breachId));
         return toJson(response);
     }
 
     public CallFailedRuntimeException runCreateExpectingFailure(final JsonObject body) {
-        final WorkingCapitalBreachRequest request = fromJson(body, WorkingCapitalBreachRequest.class);
-        return FeignCalls.fail(() -> api().createWorkingCapitalBreach(request));
+        final WorkingCapitalNearBreachRequest request = fromJson(body, WorkingCapitalNearBreachRequest.class);
+        return FeignCalls.fail(() -> api().createWorkingCapitalNearBreach(request));
     }
 
     public CallFailedRuntimeException runUpdateExpectingFailure(final Long breachId, final JsonObject body) {
-        final WorkingCapitalBreachRequest request = fromJson(body, WorkingCapitalBreachRequest.class);
-        return FeignCalls.fail(() -> api().updateWorkingCapitalBreach(breachId, request));
+        final WorkingCapitalNearBreachRequest request = fromJson(body, WorkingCapitalNearBreachRequest.class);
+        return FeignCalls.fail(() -> api().updateWorkingCapitalNearBreach(breachId, request));
     }
 
     public CallFailedRuntimeException runRetrieveOneExpectingFailure(final Long breachId) {
-        return FeignCalls.fail(() -> api().retrieveWorkingCapitalBreach(breachId));
+        return FeignCalls.fail(() -> api().retrieveWorkingCapitalNearBreach(breachId));
     }
 
     public CallFailedRuntimeException runDeleteExpectingFailure(final Long breachId) {
-        return FeignCalls.fail(() -> api().deleteWorkingCapitalBreach(breachId));
+        return FeignCalls.fail(() -> api().deleteWorkingCapitalNearBreach(breachId));
     }
 
-    public WorkingCapitalBreachData retrieveWorkingCapitalBreach(final Long breachId) {
-        return FeignCalls.ok(() -> api().retrieveWorkingCapitalBreach(breachId));
+    public WorkingCapitalNearBreachData retrieveWorkingCapitalNearBreach(final Long breachId) {
+        return FeignCalls.ok(() -> api().retrieveWorkingCapitalNearBreach(breachId));
     }
 
     private static <T> T fromJson(final JsonObject json, final Class<T> type) {
@@ -113,14 +107,13 @@ public class WorkingCapitalBreachHelper {
         }
     }
 
-    public JsonObject breachJson(final String name, final Integer frequency, final String frequencyType, final String amountCalculationType,
-            final BigDecimal amount) {
+    public JsonObject nearBreachJson(final String name, final Integer frequency, final String frequencyType, final BigDecimal threshold) {
         final JsonObject json = new JsonObject();
-        json.addProperty("name", name);
-        json.addProperty("breachFrequency", frequency);
-        json.addProperty("breachFrequencyType", frequencyType);
-        json.addProperty("breachAmountCalculationType", amountCalculationType);
-        json.addProperty("breachAmount", amount);
+        json.addProperty("nearBreachName", name);
+        json.addProperty("nearBreachFrequency", frequency);
+        json.addProperty("nearBreachFrequencyType", frequencyType);
+        json.addProperty("nearBreachThreshold", threshold);
         return json;
     }
+
 }
