@@ -11,6 +11,7 @@ Feature: Working Capital COB Job
       | stepName                       | order |
       | DUMMY_BUSINESS_STEP            | 1     |
       | WC_DELINQUENCY_RANGE_SCHEDULE  | 2     |
+      | WC_BREACH_SCHEDULE             | 3     |
     Then Admin verifies scheduler job "WC_COB" has display name "Working Capital Loan COB"
     Then Admin verifies scheduler job "WC_COB" has active status "false"
 
