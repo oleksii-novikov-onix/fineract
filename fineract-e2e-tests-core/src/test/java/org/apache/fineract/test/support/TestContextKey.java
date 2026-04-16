@@ -342,6 +342,7 @@ public abstract class TestContextKey {
     public static final String DELINQUENCY_BUCKET_CREATE_REQUEST_FOR_UPDATE = "delinquencyBucketCreateRequestForUpdate";
     public static final String DELINQUENCY_BUCKET_CREATE_RESPONSE_FOR_UPDATE_DUPLICATE = "delinquencyBucketUpdateRequestForUpdateDuplicate";
     public static final String WORKING_CAPITAL_BREACH_ID = "workingCapitalBreachId";
+    public static final String WORKING_CAPITAL_NEAR_BREACH_ID = "workingCapitalNearBreachId";
     public static final String WORKING_CAPITAL_BREACH_CREATE_REQUEST = "workingCapitalBreachCreateRequest";
     public static final String WORKING_CAPITAL_BREACH_UPDATE_REQUEST = "workingCapitalBreachUpdateRequest";
     public static final String WORKING_CAPITAL_BREACH_ID_FOR_UPDATE = "workingCapitalBreachIdForUpdate";
