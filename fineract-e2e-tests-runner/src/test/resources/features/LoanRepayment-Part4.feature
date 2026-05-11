@@ -53,8 +53,8 @@ Feature: LoanRepayment - Part4
     Then Loan Repayment schedule has 2 periods, with the following data for periods:
       | Nr | Days | Date             | Paid date | Balance of loan | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       |    |      | 26 October 2025  |           | 1.0             |               |          | 0.0  |           | 0.0 |      |            |      | 0.0         |
-      | 1  | 31   | 26 November 2025 |           | 0.0             | 1.0           | 0.0      | 0.0  | 0.0       | 1.0 | 0.0  | 0.0        | 0.0  | 1.0         |
-      | 2  | 30   | 26 December 2025 |           | 0.0             | 0.0           | 0.0      | 0.0  | 0.0       | 0.0 | 0.0  | 0.0        | 0.0  | 0.0         |
+      | 1  | 31   | 26 November 2025 |           | 0.5             | 0.5           | 0.0      | 0.0  | 0.0       | 0.5 | 0.0  | 0.0        | 0.0  | 0.5         |
+      | 2  | 30   | 26 December 2025 |           | 0.0             | 0.5           | 0.0      | 0.0  | 0.0       | 0.5 | 0.0  | 0.0        | 0.0  | 0.5         |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       | 1.0           | 0.0      | 0.0  | 0.0       | 1.0 | 0.0  | 0.0        | 0.0  | 1.0         |
@@ -62,8 +62,8 @@ Feature: LoanRepayment - Part4
     Then Loan Repayment schedule has 2 periods, with the following data for periods:
       | Nr | Days | Date             | Paid date       | Balance of loan | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       |    |      | 26 October 2025  |                 | 0.4             |               |          | 0.0  |           | 0.0 | 0.0  |            |      |             |
-      | 1  | 31   | 26 November 2025 |                 | 0.0             | 0.4           | 0.0      | 0.0  | 0.0       | 0.4 | 0.0  | 0.0        | 0.0  | 0.4         |
-      | 2  | 30   | 26 December 2025 | 26 October 2025 | 0.0             | 0.0           | 0.0      | 0.0  | 0.0       | 0.0 | 0.0  | 0.0        | 0.0  | 0.0         |
+      | 1  | 31   | 26 November 2025 |                 | 0.2             | 0.2           | 0.0      | 0.0  | 0.0       | 0.2 | 0.0  | 0.0        | 0.0  | 0.2         |
+      | 2  | 30   | 26 December 2025 |                 | 0.0             | 0.2           | 0.0      | 0.0  | 0.0       | 0.2 | 0.0  | 0.0        | 0.0  | 0.2         |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       | 0.4           | 0.0      | 0.0  | 0.0       | 0.4 | 0.0  | 0.0        | 0.0  | 0.4         |
@@ -75,8 +75,8 @@ Feature: LoanRepayment - Part4
     Then Loan Repayment schedule has 2 periods, with the following data for periods:
       | Nr | Days | Date             | Paid date       | Balance of loan | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       |    |      | 26 October 2025  |                 | 0.4             |               |          | 0.0  |           | 0.0 | 0.0  |            |      |             |
-      | 1  | 31   | 26 November 2025 | 27 October 2025 | 0.0             | 0.4           | 0.0      | 0.0  | 0.0       | 0.4 | 0.4  | 0.4        | 0.0  | 0.0         |
-      | 2  | 30   | 26 December 2025 | 26 October 2025 | 0.0             | 0.0           | 0.0      | 0.0  | 0.0       | 0.0 | 0.0  | 0.0        | 0.0  | 0.0         |
+      | 1  | 31   | 26 November 2025 | 27 October 2025 | 0.2             | 0.2           | 0.0      | 0.0  | 0.0       | 0.2 | 0.2  | 0.2        | 0.0  | 0.0         |
+      | 2  | 30   | 26 December 2025 | 27 October 2025 | 0.0             | 0.2           | 0.0      | 0.0  | 0.0       | 0.2 | 0.2  | 0.2        | 0.0  | 0.0         |
     Then Loan Repayment schedule has the following data in Total row:
       | Principal due | Interest | Fees | Penalties | Due | Paid | In advance | Late | Outstanding |
       | 0.4           | 0.0      | 0.0  | 0.0       | 0.4 | 0.4  | 0.4        | 0.0  | 0.0         |

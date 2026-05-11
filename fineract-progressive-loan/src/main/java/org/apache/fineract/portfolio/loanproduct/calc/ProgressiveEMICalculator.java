@@ -1766,13 +1766,15 @@ public final class ProgressiveEMICalculator implements EMICalculator {
     }
 
     /**
-     * Rounds the EMI to the nearest multiple of the given number. If the rounded EMI is zero, it adds one multiple of
-     * the given number to it.
+     * Rounds the EMI to the nearest multiple of the given number. When the raw EMI is positive but smaller than the
+     * multiples-of step, multiples-of rounding collapses the EMI to zero and the residual is then pushed onto a single
+     * installment by the conservation diff. In that case, degrade to currency precision so the principal can be spread
+     * across installments naturally.
      */
-    private Money safeRoundingForEMI(Money unRoundedEMI, Integer multiplesOf) {
-        Money roundedEMI = Money.roundToMultiplesOf(unRoundedEMI, multiplesOf);
-        if (roundedEMI.isZero()) {
-            roundedEMI = roundedEMI.add(BigDecimal.ONE.multiply(BigDecimal.valueOf(multiplesOf)));
+    private Money safeRoundingForEMI(final Money unRoundedEMI, final Integer multiplesOf) {
+        final Money roundedEMI = Money.roundToMultiplesOf(unRoundedEMI, multiplesOf);
+        if (roundedEMI.isZero() && unRoundedEMI.isGreaterThanZero()) {
+            return Money.of(unRoundedEMI.getCurrencyData(), unRoundedEMI.getAmount());
         }
         return roundedEMI;
     }
