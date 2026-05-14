@@ -18,26 +18,10 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-import org.apache.fineract.portfolio.workingcapitalloan.data.WorkingCapitalLoanBreachScheduleData;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
-import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachSchedule;
 
-public interface WorkingCapitalLoanBreachScheduleService {
+public interface WorkingCapitalLoanNearBreachEvaluationService {
 
-    void generateInitialPeriod(WorkingCapitalLoan loan);
-
-    void generateNextPeriodIfNeeded(WorkingCapitalLoan loan, LocalDate businessDate);
-
-    boolean hasSchedule(Long loanId);
-
-    List<WorkingCapitalLoanBreachScheduleData> retrieveBreachSchedule(Long loanId);
-
-    boolean evaluateBreachOnDate(WorkingCapitalLoanBreachSchedule period, LocalDate businessDate);
-
-    void applyRepayment(Long loanId, LocalDate transactionDate, BigDecimal amount);
-
-    void evaluateBreach(WorkingCapitalLoan loan, LocalDate businessDate);
+    void evaluateNearBreach(WorkingCapitalLoan loan, LocalDate businessDate);
 }

@@ -18,13 +18,19 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface WorkingCapitalLoanTransactionRepository extends JpaRepository<WorkingCapitalLoanTransaction, Long> {
 
@@ -37,4 +43,15 @@ public interface WorkingCapitalLoanTransactionRepository extends JpaRepository<W
     Optional<WorkingCapitalLoanTransaction> findByWcLoan_IdAndExternalId(Long wcLoanId, ExternalId externalId);
 
     boolean existsByExternalId(ExternalId externalId);
+
+    @Query("""
+            SELECT COALESCE(SUM(t.transactionAmount), 0)
+            FROM WorkingCapitalLoanTransaction t
+            WHERE t.wcLoan.id = :loanId
+            AND t.transactionDate BETWEEN :fromDate AND :toDate
+            AND t.reversed = false
+            AND t.transactionType IN :reducingTypes
+            """)
+    BigDecimal sumPaymentsInWindow(@Param("loanId") Long loanId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+            @Param("reducingTypes") Collection<LoanTransactionType> reducingTypes);
 }

@@ -25,51 +25,44 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
-import org.apache.fineract.portfolio.workingcapitalloan.service.WorkingCapitalLoanBreachScheduleService;
+import org.apache.fineract.portfolio.workingcapitalloan.service.WorkingCapitalLoanNearBreachEvaluationService;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductRelatedDetails;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class BreachScheduleBusinessStep extends WorkingCapitalLoanCOBBusinessStep {
+public class NearBreachEvaluationBusinessStep extends WorkingCapitalLoanCOBBusinessStep {
 
-    private final WorkingCapitalLoanBreachScheduleService breachScheduleService;
+    private final WorkingCapitalLoanNearBreachEvaluationService nearBreachEvaluationService;
 
     @Override
     public WorkingCapitalLoan execute(final WorkingCapitalLoan input) {
         final boolean isDisbursed = input.getDisbursementDetails().stream()
                 .map(WorkingCapitalLoanDisbursementDetails::getActualDisbursementDate).anyMatch(Objects::nonNull);
         if (!isDisbursed) {
-            log.debug("Skipping breach schedule for WC loan {} - not yet disbursed", input.getId());
+            log.debug("Skipping near breach evaluation for WC loan {} - not yet disbursed", input.getId());
             return input;
         }
 
         final WorkingCapitalLoanProductRelatedDetails details = input.getLoanProductRelatedDetails();
-        if (details == null || details.getBreach() == null) {
-            log.debug("Skipping breach schedule for WC loan {} - no breach configuration", input.getId());
+        if (details == null || details.getBreach() == null || details.getNearBreach() == null) {
+            log.debug("Skipping near breach evaluation for WC loan {} - missing breach or near breach configuration", input.getId());
             return input;
         }
 
         final LocalDate businessDate = DateUtils.getBusinessLocalDate();
-
-        if (!breachScheduleService.hasSchedule(input.getId())) {
-            breachScheduleService.generateInitialPeriod(input);
-        }
-
-        breachScheduleService.generateNextPeriodIfNeeded(input, businessDate);
-        breachScheduleService.evaluateBreach(input, businessDate.plusDays(1L));
-
+        nearBreachEvaluationService.evaluateNearBreach(input, businessDate.plusDays(1L));
         return input;
     }
 
     @Override
     public String getEnumStyledName() {
-        return "WC_BREACH_SCHEDULE";
+        return "WC_NEAR_BREACH_EVALUATION";
     }
 
     @Override
     public String getHumanReadableName() {
-        return "WC Breach Schedule";
+        return "WC Near Breach Evaluation";
     }
 }
