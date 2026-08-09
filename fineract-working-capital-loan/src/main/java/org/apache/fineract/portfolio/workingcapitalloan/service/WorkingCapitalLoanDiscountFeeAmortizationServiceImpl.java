@@ -25,6 +25,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAmortizationAdjustmentTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAmortizationTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRelationTypeEnum;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
@@ -46,6 +49,7 @@ public class WorkingCapitalLoanDiscountFeeAmortizationServiceImpl implements Wor
     private final WorkingCapitalLoanAccountingProcessor accountingProcessor;
     private final ExternalIdFactory externalIdFactory;
     private final ProjectedAmortizationScheduleRepositoryWrapper scheduleRepositoryWrapper;
+    private final BusinessEventNotifierService businessEventNotifierService;
 
     @Override
     @Transactional
@@ -87,6 +91,8 @@ public class WorkingCapitalLoanDiscountFeeAmortizationServiceImpl implements Wor
             final WorkingCapitalLoanTransaction amortizationTxn = WorkingCapitalLoanTransaction.discountFeeAmortization(loan,
                     amortizationAmount, transactionDate, externalIdFactory.create());
             transactionRepository.saveAndFlush(amortizationTxn);
+            businessEventNotifierService.notifyPostBusinessEvent(
+                    new WorkingCapitalLoanDiscountFeeAmortizationTransactionBusinessEvent(amortizationTxn, loan.getId()));
             if (loan.getLoanProduct().getAccountingRule().isAccrualWithDeferredRevenueAmortization()) {
                 accountingProcessor.postJournalEntriesForDiscountFeeAmortization(loan, amortizationTxn, loan.isChargedOff());
             }
@@ -96,6 +102,8 @@ public class WorkingCapitalLoanDiscountFeeAmortizationServiceImpl implements Wor
                     adjustmentAmount, transactionDate, externalIdFactory.create());
             linkToTriggeringDiscountAdjustment(loan, adjustmentTxn);
             transactionRepository.saveAndFlush(adjustmentTxn);
+            businessEventNotifierService.notifyPostBusinessEvent(
+                    new WorkingCapitalLoanDiscountFeeAmortizationAdjustmentTransactionBusinessEvent(adjustmentTxn, loan.getId()));
             if (loan.getLoanProduct().getAccountingRule().isAccrualWithDeferredRevenueAmortization()) {
                 accountingProcessor.postJournalEntriesForDiscountFeeAmortizationAdjustment(loan, adjustmentTxn, loan.isChargedOff());
             }

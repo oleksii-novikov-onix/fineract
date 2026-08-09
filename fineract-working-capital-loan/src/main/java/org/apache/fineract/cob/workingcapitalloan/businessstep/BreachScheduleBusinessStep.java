@@ -23,6 +23,8 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBreachScheduleChangedBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
 import org.apache.fineract.portfolio.workingcapitalloan.service.WorkingCapitalLoanBreachScheduleService;
@@ -35,6 +37,7 @@ import org.springframework.stereotype.Component;
 public class BreachScheduleBusinessStep extends WorkingCapitalLoanCOBBusinessStep {
 
     private final WorkingCapitalLoanBreachScheduleService breachScheduleService;
+    private final BusinessEventNotifierService businessEventNotifierService;
 
     @Override
     public WorkingCapitalLoan execute(final WorkingCapitalLoan loan) {
@@ -53,13 +56,18 @@ public class BreachScheduleBusinessStep extends WorkingCapitalLoanCOBBusinessSte
 
         final LocalDate businessDate = DateUtils.getBusinessLocalDate();
 
+        boolean scheduleChanged = false;
         if (!breachScheduleService.hasSchedule(loan.getId())) {
-            breachScheduleService.generateInitialPeriod(loan);
+            scheduleChanged = breachScheduleService.generateInitialPeriod(loan);
         }
 
-        breachScheduleService.generateNextPeriodIfNeeded(loan, businessDate);
-        breachScheduleService.evaluateBreach(loan, businessDate);
+        scheduleChanged |= breachScheduleService.generateNextPeriodIfNeeded(loan, businessDate);
+        scheduleChanged |= breachScheduleService.evaluateBreach(loan, businessDate);
         breachScheduleService.recalculatePastDueAmount(loan);
+
+        if (scheduleChanged) {
+            businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanBreachScheduleChangedBusinessEvent(loan));
+        }
 
         return loan;
     }

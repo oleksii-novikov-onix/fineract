@@ -34,6 +34,9 @@ import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanChargeOffBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanChargeOffTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants;
 import org.apache.fineract.portfolio.workingcapitalloan.accounting.WorkingCapitalLoanAccountingProcessor;
@@ -70,6 +73,7 @@ public class WorkingCapitalLoanChargeOffWriteServiceImpl implements WorkingCapit
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final ExternalIdFactory externalIdFactory;
     private final WorkingCapitalLoanAccountingProcessor accountingProcessor;
+    private final BusinessEventNotifierService businessEventNotifierService;
 
     @Transactional
     @Override
@@ -113,6 +117,10 @@ public class WorkingCapitalLoanChargeOffWriteServiceImpl implements WorkingCapit
 
         loan.markAsChargedOff(transactionDate, currentUser, chargeOffReason);
         this.loanRepository.saveAndFlush(loan);
+
+        this.businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanChargeOffBusinessEvent(loan));
+        this.businessEventNotifierService
+                .notifyPostBusinessEvent(new WorkingCapitalLoanChargeOffTransactionBusinessEvent(chargeOffTransaction, loan.getId()));
 
         // Post charge-off journal entries: write off the outstanding receivables against charge-off expense / income
         // reversal. No portfolio or schedule impact -- pure accounting tag.

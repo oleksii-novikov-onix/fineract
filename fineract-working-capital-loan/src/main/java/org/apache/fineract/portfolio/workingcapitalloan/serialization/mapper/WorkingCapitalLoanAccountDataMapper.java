@@ -64,6 +64,7 @@ public interface WorkingCapitalLoanAccountDataMapper {
     @Mapping(source = "breachStartDate", target = "breach.breachStartDate")
     @Mapping(source = "nearBreach", target = "breach.nearBreach")
     @Mapping(target = "breach.breachSchedule", ignore = true)
+    @Mapping(target = "breach.breachPastDueAmount", ignore = true)
     @Mapping(target = "overpaidOnDate", ignore = true)
     @Mapping(target = "customData", ignore = true)
     WorkingCapitalLoanAccountDataV1 map(WorkingCapitalLoanData source);
@@ -96,6 +97,8 @@ public interface WorkingCapitalLoanAccountDataMapper {
     @Mapping(target = "totalCreditBalanceRefundReversed", ignore = true)
     @Mapping(target = "totalRepaymentTransaction", ignore = true)
     @Mapping(target = "totalRepaymentTransactionReversed", ignore = true)
+    @Mapping(target = "totalPayment", ignore = true)
+    @Mapping(target = "totalPaymentReversed", ignore = true)
     WorkingCapitalLoanSummaryDataV1 map(WorkingCapitalLoanSummaryData source);
 
     @Mapping(source = "delinquentPrincipal", target = "totalDelinquentAmount")

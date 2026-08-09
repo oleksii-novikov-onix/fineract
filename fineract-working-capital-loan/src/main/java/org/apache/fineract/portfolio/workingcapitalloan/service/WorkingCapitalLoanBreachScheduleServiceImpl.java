@@ -66,16 +66,16 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
     private final WorkingCapitalLoanBalanceRepository balanceRepository;
 
     @Override
-    public void generateInitialPeriod(final WorkingCapitalLoan loan) {
+    public boolean generateInitialPeriod(final WorkingCapitalLoan loan) {
         final Optional<WorkingCapitalBreach> breachOpt = getBreachConfig(loan);
         if (breachOpt.isEmpty()) {
-            return;
+            return false;
         }
 
         final Optional<LocalDate> anchorDateOptional = resolveBreachAnchorDate(loan);
         if (anchorDateOptional.isEmpty()) {
             log.warn("No breach schedule anchor date found for WC loan {}, skipping initial breach schedule generation", loan.getId());
-            return;
+            return false;
         }
 
         final LocalDate fromDate = anchorDateOptional.get().plusDays(getBreachGraceDays(loan));
@@ -87,6 +87,7 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
         applyRecordedPauses(period, findEffectivePauses(loan.getId()));
         repository.saveAndFlush(period);
         log.debug("Generated initial breach schedule period for WC loan {}", loan.getId());
+        return true;
     }
 
     @Override
@@ -95,15 +96,15 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
     }
 
     @Override
-    public void generateNextPeriodIfNeeded(final WorkingCapitalLoan loan, final LocalDate businessDate) {
+    public boolean generateNextPeriodIfNeeded(final WorkingCapitalLoan loan, final LocalDate businessDate) {
         final Optional<WorkingCapitalBreach> breachOpt = getBreachConfig(loan);
         if (breachOpt.isEmpty()) {
-            return;
+            return false;
         }
 
         final Optional<WorkingCapitalLoanBreachSchedule> latestPeriodOpt = repository.findTopByLoanIdOrderByPeriodNumberDesc(loan.getId());
         if (latestPeriodOpt.isEmpty() || latestPeriodOpt.get().getToDate().isAfter(businessDate)) {
-            return;
+            return false;
         }
 
         final EffectiveBreachRescheduleParams params = resolveEffectiveRescheduleParams(loan.getId(), breachOpt.get());
@@ -129,6 +130,7 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
             repository.saveAllAndFlush(newPeriods);
             log.debug("Generated {} next breach schedule periods for WC loan {}", newPeriods.size(), loan.getId());
         }
+        return !newPeriods.isEmpty();
     }
 
     @Override
@@ -196,11 +198,11 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
     }
 
     @Override
-    public void evaluateBreach(final WorkingCapitalLoan loan, final LocalDate businessDate) {
+    public boolean evaluateBreach(final WorkingCapitalLoan loan, final LocalDate businessDate) {
         // Sweep every expired period, not just the one covering the business date: with a LOAN_CREATION anchor the
         // first period can expire before the first COB touches the loan, so a single-period lookup would leave it
         // unbreached.
-        evaluateExpiredBreaches(loan, businessDate);
+        return evaluateExpiredBreaches(loan, businessDate);
     }
 
     @Override
@@ -470,17 +472,20 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
                 latestWithFrequency.map(WorkingCapitalLoanBreachAction::getFrequencyType).orElse(breach.getBreachFrequencyType()));
     }
 
-    private void evaluateExpiredBreaches(final WorkingCapitalLoan loan, final LocalDate businessDate) {
+    private boolean evaluateExpiredBreaches(final WorkingCapitalLoan loan, final LocalDate businessDate) {
         if (isBreachEvaluationDisabled(loan.getId(), businessDate)) {
-            return;
+            return false;
         }
         final List<WorkingCapitalLoanBreachSchedule> periods = repository
                 .findByLoanIdAndBreachIsNullAndToDateLessThanEqualOrderByPeriodNumberAsc(loan.getId(), businessDate);
+        boolean evaluated = false;
         for (final WorkingCapitalLoanBreachSchedule period : periods) {
             if (evaluateBreachOnDate(period, businessDate)) {
                 repository.saveAndFlush(period);
+                evaluated = true;
             }
         }
+        return evaluated;
     }
 
     private boolean isBreachEvaluationDisabled(final Long loanId, final LocalDate date) {

@@ -377,3 +377,20 @@ Feature: Working Capital Loan Charge-off
     Then Initiating an undo of the charge-off on the Working Capital loan results an error with the following data:
       | httpCode | message                                                       |
       | 403      | error.msg.wc.loan.charge.off.is.not.the.last.user.transaction |
+
+  Scenario: Working Capital loan raises Charge Off account and transaction business events on charge-off
+    When Admin sets the business date to "01 January 2026"
+    And Admin creates a client with random data
+    And Admin creates a working capital loan with the following data:
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP        | 01 January 2026 | 01 January 2026          | 100             | 1000               | 18                | 0        |
+    And Admin successfully approves the working capital loan on "01 January 2026" with "100" amount and expected disbursement date on "01 January 2026"
+    And a Working Capital Loan Balance Changed business event is raised on approval
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "100" EUR transaction amount
+    Then Working Capital loan status will be "ACTIVE"
+    And a Working Capital Loan Balance Changed business event is raised
+    When Admin sets the business date to "15 January 2026"
+    And Admin runs inline COB job for Working Capital Loan by loanId
+    And Admin charges off the Working Capital loan on "15 January 2026" with charge-off reason "Fraud"
+    Then a Working Capital Loan Charge Off business event is raised with "15 January 2026" charge off date
+    And a Working Capital Loan Charge Off transaction business event is raised with "100.0" EUR amount

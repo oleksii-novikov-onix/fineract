@@ -252,6 +252,7 @@ public class WorkingCapitalLoanApplicationReadPlatformServiceImpl implements Wor
                 .ifPresent(period -> {
                     final int graceDays = data.getDelinquencyGraceDays() != null ? data.getDelinquencyGraceDays() : 0;
                     data.setDelinquencyStartDate(period.getFromDate().plusDays(graceDays));
+                    Optional.ofNullable(data.getSummary()).ifPresent(summary -> summary.setOverdueSinceDate(period.getToDate()));
                 });
     }
 

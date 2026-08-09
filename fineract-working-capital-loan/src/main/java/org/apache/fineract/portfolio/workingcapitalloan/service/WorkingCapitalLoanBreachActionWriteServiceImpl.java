@@ -24,6 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.event.business.domain.BusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBreachCalculationDisabledBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBreachCalculationEnabledBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBreachScheduleChangedBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachActionType;
@@ -44,6 +49,7 @@ public class WorkingCapitalLoanBreachActionWriteServiceImpl implements WorkingCa
     private final WorkingCapitalLoanBreachActionParseAndValidator validator;
     private final WorkingCapitalLoanBreachScheduleService breachScheduleService;
     private final WorkingCapitalLoanBreachResetService breachResetService;
+    private final BusinessEventNotifierService businessEventNotifierService;
 
     @Transactional
     @Override
@@ -75,6 +81,8 @@ public class WorkingCapitalLoanBreachActionWriteServiceImpl implements WorkingCa
             breachScheduleService.reprocessBreachSchedule(workingCapitalLoan);
         }
 
+        businessEventNotifierService.notifyPostBusinessEvent(breachActionEvent(breachAction.getAction(), workingCapitalLoan));
+
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
                 .withEntityId(saved.getId()) //
@@ -82,6 +90,14 @@ public class WorkingCapitalLoanBreachActionWriteServiceImpl implements WorkingCa
                 .withOfficeId(workingCapitalLoan.getOfficeId()) //
                 .withClientId(workingCapitalLoan.getClientId()) //
                 .build();
+    }
+
+    private BusinessEvent<?> breachActionEvent(final WorkingCapitalLoanBreachActionType actionType, final WorkingCapitalLoan loan) {
+        return switch (actionType) {
+            case DISABLE -> new WorkingCapitalLoanBreachCalculationDisabledBusinessEvent(loan);
+            case ENABLE -> new WorkingCapitalLoanBreachCalculationEnabledBusinessEvent(loan);
+            case PAUSE, RESUME, RESCHEDULE, RESET, UNDO_RESET -> new WorkingCapitalLoanBreachScheduleChangedBusinessEvent(loan);
+        };
     }
 
 }

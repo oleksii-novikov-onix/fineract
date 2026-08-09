@@ -129,9 +129,37 @@
         {
             "default": null,
             "name": "totalRepayment",
+            "doc": "Principal, fee and penalty actually settled on the loan, from every repayment-like transaction and charge adjustment. Excludes the overpaid portion, so it is not the sum of transaction amounts - for that see totalPayment.",
             "type": [
                 "null",
                 "bigdecimal"
+            ]
+        },
+        {
+            "default": null,
+            "name": "totalPayment",
+            "doc": "Sum of non-reversed repayment-like transaction amounts (repayment, payout refund, goodwill credit, charge adjustment).",
+            "type": [
+                "null",
+                "bigdecimal"
+            ]
+        },
+        {
+            "default": null,
+            "name": "totalPaymentReversed",
+            "doc": "Sum of reversed repayment-like transaction amounts (repayment, payout refund, goodwill credit, charge adjustment).",
+            "type": [
+                "null",
+                "bigdecimal"
+            ]
+        },
+        {
+            "default": null,
+            "name": "overdueSinceDate",
+            "doc": "End date of the earliest delinquency period whose minimum payment criteria was not met.",
+            "type": [
+                "null",
+                "string"
             ]
         },
         {
@@ -181,7 +209,7 @@
         {
             "default": null,
             "name": "chargeOffReasonId",
-            "doc": "Always null: working capital does not yet implement charge-off.",
+            "doc": "Code value id of the reason the loan was charged off, when one was recorded.",
             "type": [
                 "null",
                 "long"
@@ -190,7 +218,7 @@
         {
             "default": null,
             "name": "chargeOffReason",
-            "doc": "Always null: working capital does not yet implement charge-off.",
+            "doc": "Name of the reason the loan was charged off, when one was recorded.",
             "type": [
                 "null",
                 "string"
@@ -263,6 +291,7 @@
         {
             "default": null,
             "name": "totalRepaymentTransaction",
+            "doc": "Sum of non-reversed repayment transaction amounts, repayments only. The repayment-like equivalent is totalPayment.",
             "type": [
                 "null",
                 "bigdecimal"

@@ -21,9 +21,11 @@ package org.apache.fineract.test.messaging.event;
 import static org.apache.fineract.client.feign.util.FeignCalls.ok;
 import static org.apache.fineract.test.stepdef.loan.LoanRepaymentStepDef.DATE_FORMAT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -52,6 +54,7 @@ import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanCollecti
 import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanDelinquencyDataV1;
 import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanDelinquencySchedulePeriodDataV1;
 import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanDelinquencyScheduleTagDataV1;
+import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanJournalEntryDataV1;
 import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanSummaryDataV1;
 import org.apache.fineract.avro.workingcapitalloan.v1.WorkingCapitalLoanTransactionDataV1;
 import org.apache.fineract.client.feign.FineractFeignClient;
@@ -81,6 +84,7 @@ import org.apache.fineract.test.data.TransactionType;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
 import org.apache.fineract.test.helper.GlobalConfigurationHelper;
 import org.apache.fineract.test.messaging.EventAssertion;
+import org.apache.fineract.test.messaging.EventMessage;
 import org.apache.fineract.test.messaging.event.assetexternalization.LoanAccountSnapshotEvent;
 import org.apache.fineract.test.messaging.event.assetexternalization.LoanOwnershipTransferEvent;
 import org.apache.fineract.test.messaging.event.client.ClientActivatedEvent;
@@ -106,23 +110,41 @@ import org.apache.fineract.test.messaging.event.loan.transaction.LoanTransaction
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanTransactionMerchantIssuedRefundPostEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanTransactionPayoutRefundPostEvent;
 import org.apache.fineract.test.messaging.event.loan.transaction.LoanUndoContractTerminationBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.charge.WorkingCapitalLoanAddChargeEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.journalentry.WorkingCapitalLoanJournalEntryCreatedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.AbstractWorkingCapitalLoanEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanApplicationModifiedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanApprovedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanBalanceChangedEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanBreachCalculationDisabledEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanBreachCalculationEnabledEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanBreachScheduleChangedEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanChargeOffEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanCreatedEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanDelinquencyCalculationDisabledEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanDelinquencyCalculationEnabledEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanDelinquencyRangeChangeEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanDelinquencyScheduleChangedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanDisbursalEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanFraudChangedEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanPeriodPaymentRateChangedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanRejectedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanStatusChangedEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanUndoApprovalEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.loan.WorkingCapitalLoanUndoDisbursalEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.AbstractWorkingCapitalLoanTransactionEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanChargeOffTransactionBusinessEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanCreditBalanceRefundTransactionBusinessEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanDisbursalTransactionBusinessEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAmortizationAdjustmentTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAmortizationTransactionBusinessEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanGoodwillCreditTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanPayoutRefundTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanTransactionReversedBusinessEvent;
 import org.apache.fineract.test.messaging.event.workingcapitalloan.transaction.WorkingCapitalLoanUndoDisbursalTransactionBusinessEvent;
+import org.apache.fineract.test.messaging.store.EventStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -134,11 +156,15 @@ public class EventCheckHelper {
     private static final DateTimeFormatter FORMATTER_EVENTS = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
     private static final long TRANSACTION_COMMIT_DELAY_MS = 100L;
+    private static final String JOURNAL_ENTRY_TYPE_DEBIT = "DEBIT";
+    private static final String JOURNAL_ENTRY_TYPE_CREDIT = "CREDIT";
 
     @Autowired
     private FineractFeignClient fineractClient;
     @Autowired
     private EventAssertion eventAssertion;
+    @Autowired
+    private EventStore eventStore;
     @Autowired
     private GlobalConfigurationHelper configurationHelper;
     @Autowired
@@ -944,6 +970,146 @@ public class EventCheckHelper {
                         expected.getPausePeriodEnd());
             });
         });
+    }
+
+    public void workingCapitalLoanBalanceChangedOnApprovalEventCheck(final Long loanId) {
+        workingCapitalLoanEventPayloadCheck(WorkingCapitalLoanBalanceChangedEvent.class, loanId, event -> {
+            assertThat(event.getStatus()).isNotNull();
+            assertThat(event.getStatus().getId()).as("status.id").isEqualTo(APPROVED.getValue());
+            assertThat(event.getApprovedPrincipal()).as("approvedPrincipal").isNotNull();
+        });
+    }
+
+    public void workingCapitalLoanPeriodPaymentRateChangedEventCheck(final Long loanId, final BigDecimal expectedPaymentRate) {
+        workingCapitalLoanEventPayloadCheck(WorkingCapitalLoanPeriodPaymentRateChangedEvent.class, loanId,
+                event -> assertAmountEquals("paymentRate", event.getPaymentRate(), expectedPaymentRate));
+    }
+
+    public void workingCapitalLoanDelinquencyScheduleChangedEventCheck(final Long loanId) {
+        workingCapitalLoanEventPayloadCheck(WorkingCapitalLoanDelinquencyScheduleChangedEvent.class, loanId, event -> {
+            assertThat(event.getDelinquent()).isNotNull();
+            assertThat(event.getDelinquent().getDelinquencySchedule()).isNotNull().isNotEmpty();
+        });
+    }
+
+    public void workingCapitalLoanBreachScheduleChangedEventCheck(final Long loanId) {
+        workingCapitalLoanEventPayloadCheck(WorkingCapitalLoanBreachScheduleChangedEvent.class, loanId, event -> {
+            assertThat(event.getBreach()).isNotNull();
+            assertThat(event.getBreach().getBreachSchedule()).isNotNull().isNotEmpty();
+        });
+    }
+
+    public void workingCapitalLoanDelinquencyCalculationDisabledEventCheck(final Long loanId) {
+        workingCapitalLoanAccountDataV1Check(WorkingCapitalLoanDelinquencyCalculationDisabledEvent.class, loanId);
+    }
+
+    public void workingCapitalLoanDelinquencyCalculationEnabledEventCheck(final Long loanId) {
+        workingCapitalLoanAccountDataV1Check(WorkingCapitalLoanDelinquencyCalculationEnabledEvent.class, loanId);
+    }
+
+    public void workingCapitalLoanBreachCalculationDisabledEventCheck(final Long loanId) {
+        workingCapitalLoanAccountDataV1Check(WorkingCapitalLoanBreachCalculationDisabledEvent.class, loanId);
+    }
+
+    public void workingCapitalLoanBreachCalculationEnabledEventCheck(final Long loanId) {
+        workingCapitalLoanAccountDataV1Check(WorkingCapitalLoanBreachCalculationEnabledEvent.class, loanId);
+    }
+
+    public void workingCapitalLoanChargeOffEventCheck(final Long loanId, final String chargedOffOnDate) {
+        workingCapitalLoanEventPayloadCheck(WorkingCapitalLoanChargeOffEvent.class, loanId, event -> {
+            assertThat(event.getChargedOff()).as("chargedOff").isTrue();
+            assertThat(event.getSummary()).isNotNull();
+            assertThat(event.getSummary().getChargeOffReason()).as("summary.chargeOffReason").isNotBlank();
+            assertThat(event.getTimeline()).isNotNull();
+            assertThat(event.getTimeline().getChargedOffOnDate()).as("timeline.chargedOffOnDate")
+                    .isEqualTo(FORMATTER_EVENTS.format(LocalDate.parse(chargedOffOnDate, DATE_FORMATTER)));
+        });
+    }
+
+    public void workingCapitalLoanFraudChangedEventCheck(final Long loanId) {
+        workingCapitalLoanAccountDataV1Check(WorkingCapitalLoanFraudChangedEvent.class, loanId);
+    }
+
+    public void workingCapitalLoanPayoutRefundTransactionEventCheck(final Long loanId, final BigDecimal expectedAmount) {
+        waitForTransactionCommit();
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = findLastWorkingCapitalLoanTransaction(loanId, "payoutRefund", false,
+                "Payout refund transaction not found");
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanPayoutRefundTransactionBusinessEvent.class, loanId, transaction,
+                expectedAmount, false);
+    }
+
+    public void workingCapitalLoanGoodwillCreditTransactionEventCheck(final Long loanId, final BigDecimal expectedAmount) {
+        waitForTransactionCommit();
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = findLastWorkingCapitalLoanTransaction(loanId, "goodwillCredit", false,
+                "Goodwill credit transaction not found");
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanGoodwillCreditTransactionBusinessEvent.class, loanId, transaction,
+                expectedAmount, false);
+    }
+
+    public void workingCapitalLoanTransactionReversedEventCheck(final Long loanId, final String transactionType) {
+        waitForTransactionCommit();
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = findLastWorkingCapitalLoanTransaction(loanId, transactionType, true,
+                "Reversed " + transactionType + " transaction not found");
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanTransactionReversedBusinessEvent.class, loanId, transaction, null, true);
+    }
+
+    public void workingCapitalLoanChargeOffTransactionEventCheck(final Long loanId, final BigDecimal expectedAmount) {
+        waitForTransactionCommit();
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = findLastWorkingCapitalLoanTransaction(loanId, "chargeOff", false,
+                "Charge-off transaction not found");
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanChargeOffTransactionBusinessEvent.class, loanId, transaction,
+                expectedAmount, false);
+    }
+
+    public void workingCapitalLoanDiscountFeeAmortizationTransactionEventCheck(final Long loanId, final String transactionDate) {
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = workingCapitalLoanTransactionDetails(loanId,
+                "discountFeeAmortization", transactionDate);
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanDiscountFeeAmortizationTransactionBusinessEvent.class, loanId, transaction,
+                null, false);
+    }
+
+    public void workingCapitalLoanDiscountFeeAmortizationAdjustmentTransactionEventCheck(final Long loanId, final String transactionDate) {
+        final GetWorkingCapitalLoanTransactionIdResponse transaction = workingCapitalLoanTransactionDetails(loanId,
+                "discountFeeAmortizationAdjustment", transactionDate);
+        workingCapitalLoanTransactionEventCheck(WorkingCapitalLoanDiscountFeeAmortizationAdjustmentTransactionBusinessEvent.class, loanId,
+                transaction, null, false);
+    }
+
+    public void workingCapitalLoanAddChargeEventCheck(final Long loanId, final String chargeName, final BigDecimal expectedAmount) {
+        waitForTransactionCommit();
+        eventAssertion.assertEvent(WorkingCapitalLoanAddChargeEvent.class, loanId)//
+                .extractingData(WorkingCapitalLoanChargeDataV1::getLoanId).isEqualTo(loanId)//
+                .extractingData(WorkingCapitalLoanChargeDataV1::getName).isEqualTo(chargeName)//
+                .extractingBigDecimal(WorkingCapitalLoanChargeDataV1::getAmount).isEqualTo(expectedAmount);
+    }
+
+    public void workingCapitalLoanJournalEntriesEventCheck(final Long loanId) {
+        if (eventProperties.isEventVerificationDisabled()) {
+            return;
+        }
+        waitForTransactionCommit();
+        final WorkingCapitalLoanJournalEntryCreatedEvent eventType = new WorkingCapitalLoanJournalEntryCreatedEvent();
+        await().atMost(Duration.ofMillis(eventProperties.getWaitTimeoutInMillis()))
+                .until(() -> !eventStore.findAllEventsById(eventType, loanId).isEmpty());
+        final List<WorkingCapitalLoanJournalEntryDataV1> entries = eventStore.findAllEventsById(eventType, loanId).stream()
+                .map(EventMessage::getData).toList();
+        assertThat(entries).as("journal entry events").isNotEmpty();
+
+        final BigDecimal debits = sumJournalEntries(entries, JOURNAL_ENTRY_TYPE_DEBIT);
+        final BigDecimal credits = sumJournalEntries(entries, JOURNAL_ENTRY_TYPE_CREDIT);
+        assertThat(debits).as("sum of debit journal entries").isEqualByComparingTo(credits);
+
+        entries.forEach(entry -> {
+            assertThat(entry.getLoanId()).as("journalEntry.loanId").isEqualTo(loanId);
+            assertThat(entry.getGlAccount()).as("journalEntry.glAccount").isNotNull();
+            assertThat(entry.getGlAccount().getGlCode()).as("journalEntry.glAccount.glCode").isNotBlank();
+            assertThat(entry.getWcLoanTransactionId()).as("journalEntry.wcLoanTransactionId").isNotNull();
+        });
+    }
+
+    private static BigDecimal sumJournalEntries(final List<WorkingCapitalLoanJournalEntryDataV1> entries, final String type) {
+        return entries.stream().filter(entry -> entry.getType() != null && type.equals(entry.getType().getId()))
+                .map(WorkingCapitalLoanJournalEntryDataV1::getAmount).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public void workingCapitalLoanStatusChangedEventNotRaisedCheck(final Long loanId) {

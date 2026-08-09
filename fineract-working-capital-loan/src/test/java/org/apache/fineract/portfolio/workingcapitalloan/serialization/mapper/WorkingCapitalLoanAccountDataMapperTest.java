@@ -257,8 +257,9 @@ class WorkingCapitalLoanAccountDataMapperTest {
         assertStringEnum(fullNearBreach().getFrequencyType(), nearBreach.getFrequencyType());
         assertEquals(new BigDecimal("450.00"), nearBreach.getThreshold());
 
-        // serializer-only field stays unmapped
+        // serializer-only fields stay unmapped
         assertNull(breach.getBreachSchedule());
+        assertNull(breach.getBreachPastDueAmount());
     }
 
     @Test
@@ -301,6 +302,7 @@ class WorkingCapitalLoanAccountDataMapperTest {
         assertEquals(new BigDecimal("35"), result.getUnrealizedIncomeFromDiscountFee());
         assertEquals(new BigDecimal("50"), result.getTotalDiscountFee());
         assertEquals(new BigDecimal("5"), result.getTotalDiscountFeeAdjustment());
+        assertEquals("2024-01-30", result.getOverdueSinceDate());
         assertCurrency(source.getCurrency(), result.getCurrency());
     }
 
@@ -331,6 +333,8 @@ class WorkingCapitalLoanAccountDataMapperTest {
         assertNull(result.getTotalCreditBalanceRefundReversed());
         assertNull(result.getTotalRepaymentTransaction());
         assertNull(result.getTotalRepaymentTransactionReversed());
+        assertNull(result.getTotalPayment());
+        assertNull(result.getTotalPaymentReversed());
     }
 
     @Test
@@ -402,6 +406,7 @@ class WorkingCapitalLoanAccountDataMapperTest {
         assertEquals(29, result.getNumberOfDays());
         assertEquals(new BigDecimal("120.00"), result.getMinPaymentAmount());
         assertEquals(new BigDecimal("70.00"), result.getOutstandingAmount());
+        assertEquals(new BigDecimal("50.00"), result.getPaidAmount());
         assertEquals(Boolean.TRUE, result.getNearBreach());
         assertEquals(Boolean.FALSE, result.getBreach());
         assertEquals(Boolean.FALSE, result.getReset());
@@ -557,7 +562,8 @@ class WorkingCapitalLoanAccountDataMapperTest {
                 .realizedIncomeFromDiscountFee(new BigDecimal("15")).unrealizedIncomeFromDiscountFee(new BigDecimal("35"))
                 .overpayment(new BigDecimal("9.99")).totalDisbursement(new BigDecimal("950")).totalDiscountFee(new BigDecimal("50"))
                 .totalDiscountFeeAdjustment(new BigDecimal("5")).totalExpectedRepayment(new BigDecimal("1500"))
-                .totalRepayment(new BigDecimal("600")).totalOutstanding(new BigDecimal("900")).build();
+                .totalRepayment(new BigDecimal("600")).totalOutstanding(new BigDecimal("900"))
+                .overdueSinceDate(LocalDate.of(2024, 1, 30)).build();
     }
 
     private static WorkingCapitalLoanCollectionData fullCollection() {
@@ -573,7 +579,7 @@ class WorkingCapitalLoanAccountDataMapperTest {
 
     private static WorkingCapitalLoanBreachScheduleData fullBreachSchedulePeriod() {
         return new WorkingCapitalLoanBreachScheduleData(15L, 101L, 4, LocalDate.of(2024, 2, 1), LocalDate.of(2024, 3, 1), 29,
-                new BigDecimal("120.00"), new BigDecimal("70.00"), Boolean.TRUE, Boolean.FALSE, Boolean.FALSE);
+                new BigDecimal("120.00"), new BigDecimal("70.00"), new BigDecimal("50.00"), Boolean.TRUE, Boolean.FALSE, Boolean.FALSE);
     }
 
     private static WorkingCapitalLoanChargeData fullCharge() {

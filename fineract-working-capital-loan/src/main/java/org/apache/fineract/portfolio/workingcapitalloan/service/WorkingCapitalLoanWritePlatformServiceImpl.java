@@ -47,6 +47,7 @@ import org.apache.fineract.infrastructure.event.business.domain.BusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanApprovedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBalanceChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanDisbursalBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanPeriodPaymentRateChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanRejectedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanStatusChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanUndoApprovalBusinessEvent;
@@ -55,7 +56,10 @@ import org.apache.fineract.infrastructure.event.business.domain.workingcapitallo
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanDisbursalTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanDiscountFeeTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanGoodwillCreditTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanPayoutRefundTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanRepaymentTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanTransactionReversedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanUndoDisbursalTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -130,11 +134,12 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
 
         final AppUser currentUser = this.context.authenticatedUser();
 
-        final LoanStatus oldStatus = loan.getLoanStatus();
-        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_APPROVED, loan);
-
         // Approved date
         final LocalDate approvedOnDate = command.localDateValueOfParameterNamed(WorkingCapitalLoanConstants.approvedOnDateParamName);
+
+        final LoanStatus oldStatus = loan.getLoanStatus();
+        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_APPROVED, loan, approvedOnDate);
+
         loan.setApprovedOnDate(approvedOnDate);
         loan.setApprovedBy(currentUser);
 
@@ -178,6 +183,7 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         createNote(command.stringValueOfParameterNamed(WorkingCapitalLoanConstants.noteParamName), loan);
 
         businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanApprovedBusinessEvent(loan));
+        notifyBalanceChanged(loan);
         notifyStatusChanged(loan, oldStatus);
 
         final Map<String, Object> changes = new LinkedHashMap<>();
@@ -205,7 +211,7 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         this.validator.validateUndoApproval(command.json());
 
         final LoanStatus oldStatus = loan.getLoanStatus();
-        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_APPROVAL_UNDO, loan);
+        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_APPROVAL_UNDO, loan, DateUtils.getBusinessLocalDate());
 
         loan.setApprovedOnDate(null);
         loan.setApprovedBy(null);
@@ -249,12 +255,15 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
 
         final AppUser currentUser = this.context.authenticatedUser();
 
-        final LoanStatus oldStatus = loan.getLoanStatus();
-        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_REJECTED, loan);
-
         final LocalDate rejectedOnDate = command.localDateValueOfParameterNamed(WorkingCapitalLoanConstants.rejectedOnDateParamName);
+
+        final LoanStatus oldStatus = loan.getLoanStatus();
+        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_REJECTED, loan, rejectedOnDate);
+
         loan.setRejectedOnDate(rejectedOnDate);
         loan.setRejectedBy(currentUser);
+        loan.setClosedOnDate(rejectedOnDate);
+        loan.setClosedBy(currentUser);
 
         this.loanRepository.saveAndFlush(loan);
 
@@ -313,7 +322,7 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         final PaymentDetail paymentDetail = createAndPersistPaymentDetailFromCommand(command, changes);
 
         final LoanStatus oldStatus = loan.getLoanStatus();
-        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_DISBURSED, loan);
+        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_DISBURSED, loan, actualDisbursementDate);
 
         if (!loan.getDisbursementDetails().isEmpty()) {
             loan.getDisbursementDetails().getFirst().setActualDisbursementDate(actualDisbursementDate);
@@ -400,7 +409,7 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         ensureUndoDisbursalAllowed(loan);
 
         final LoanStatus oldStatus = loan.getLoanStatus();
-        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_DISBURSAL_UNDO, loan);
+        this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_DISBURSAL_UNDO, loan, DateUtils.getBusinessLocalDate());
 
         final WorkingCapitalLoanTransaction reversedTransaction = reverseDisbursementTransactionAndResetBalance(loan);
         businessEventNotifierService
@@ -689,6 +698,8 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         final String noteText = command.stringValueOfParameterNamed(WorkingCapitalLoanConstants.noteParamName);
         createNote(noteText, loan);
 
+        businessEventNotifierService
+                .notifyPostBusinessEvent(new WorkingCapitalLoanTransactionReversedBusinessEvent(adjustmentTransaction, loan.getId()));
         notifyBalanceChanged(loan);
         notifyStatusChanged(loan, oldStatus);
 
@@ -760,9 +771,12 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
 
     private void notifyPostBusinessEvent(LoanTransactionType transactionType, WorkingCapitalLoanTransaction transaction,
             WorkingCapitalLoan loan) {
-        BusinessEvent<?> businessEvent = LoanTransactionType.REPAYMENT.equals(transactionType)
-                ? new WorkingCapitalLoanRepaymentTransactionBusinessEvent(transaction, loan.getId())
-                : null;
+        final BusinessEvent<?> businessEvent = switch (transactionType) {
+            case REPAYMENT -> new WorkingCapitalLoanRepaymentTransactionBusinessEvent(transaction, loan.getId());
+            case PAYOUT_REFUND -> new WorkingCapitalLoanPayoutRefundTransactionBusinessEvent(transaction, loan.getId());
+            case GOODWILL_CREDIT -> new WorkingCapitalLoanGoodwillCreditTransactionBusinessEvent(transaction, loan.getId());
+            default -> null;
+        };
         if (businessEvent != null) {
             businessEventNotifierService.notifyPostBusinessEvent(businessEvent);
         }
@@ -862,7 +876,7 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
             final BigDecimal overpaymentAmount = loan.getBalance().getOverpaymentAmount() != null ? loan.getBalance().getOverpaymentAmount()
                     : BigDecimal.ZERO;
             if (principalOutstanding.compareTo(BigDecimal.ZERO) == 0 && overpaymentAmount.compareTo(BigDecimal.ZERO) == 0) {
-                this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_CREDIT_BALANCE_REFUND_IN_FULL, loan);
+                this.stateMachine.transition(WorkingCapitalLoanEvent.LOAN_CREDIT_BALANCE_REFUND_IN_FULL, loan, transactionDate);
                 loan.setMaturedOnDate(transactionDate);
             }
         }
@@ -929,6 +943,8 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         final String noteText = command.stringValueOfParameterNamed(WorkingCapitalLoanConstants.noteParamName);
         createNote(noteText, loan);
         this.loanRepository.saveAndFlush(loan);
+
+        businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanPeriodPaymentRateChangedBusinessEvent(loan));
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put(WorkingCapitalLoanConstants.periodPaymentRateParamName, newRate);
@@ -1000,6 +1016,8 @@ public class WorkingCapitalLoanWritePlatformServiceImpl implements WorkingCapita
         handleNote(loan, command, changes);
 
         this.loanRepository.saveAndFlush(loan);
+        businessEventNotifierService
+                .notifyPostBusinessEvent(new WorkingCapitalLoanTransactionReversedBusinessEvent(transaction, loan.getId()));
         notifyBalanceChanged(loan);
         notifyStatusChanged(loan, oldStatus);
 
